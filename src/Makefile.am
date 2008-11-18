@@ -24,9 +24,9 @@
 # _ladir passes a dummy rpath to libtool so the thing will actually link
 # TODO: -nostdlib/-Bstatic/-lgcc platform magic, not installing the .a, etc.
 AM_CFLAGS = @XORG_CFLAGS@
-fbdev_drv_la_LTLIBRARIES = glamo_drv.la
-fbdev_drv_la_LDFLAGS = -module -avoid-version
-fbdev_drv_ladir = @moduledir@/drivers
+glamo_drv_la_LTLIBRARIES = glamo_drv.la
+glamo_drv_la_LDFLAGS = -module -avoid-version
+glamo_drv_ladir = @moduledir@/drivers
 
-fbdev_drv_la_SOURCES = \
+glamo_drv_la_SOURCES = \
          glamo.c
