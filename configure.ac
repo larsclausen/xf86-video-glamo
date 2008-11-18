@@ -21,10 +21,10 @@
 # Process this file with autoconf to produce a configure script
 
 AC_PREREQ(2.57)
-AC_INIT([xf86-video-fbdev],
+AC_INIT([xf86-video-glamo],
         0.4.0,
         [https://bugs.freedesktop.org/enter_bug.cgi?product=xorg],
-        xf86-video-fbdev)
+        xf86-video-glamo)
 
 AC_CONFIG_SRCDIR([Makefile.am])
 AM_CONFIG_HEADER([config.h])
@@ -74,7 +74,7 @@ AC_HEADER_STDC
 AC_SUBST([XORG_CFLAGS])
 AC_SUBST([moduledir])
 
-DRIVER_NAME=fbdev
+DRIVER_NAME=glamo
 AC_SUBST([DRIVER_NAME])
 
 XORG_MANPAGE_SECTIONS
