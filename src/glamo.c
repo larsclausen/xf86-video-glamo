@@ -1125,9 +1125,9 @@ GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
 	    (*flag) = 0;
 	    return TRUE;
 	case RR_GET_INFO:
-	    return GlamoRandRGetInfo(pScrn, (Rotation*)data);
+	    return GlamoRandRGetInfo(pScrn, (Rotation*)ptr);
 	case RR_SET_CONFIG:
-        return GlamoRandRSetConfig(pScrn, (xorgRRConfig*)data);
+        return GlamoRandRSetConfig(pScrn, (xorgRRConfig*)ptr);
 	default:
 	    return FALSE;
     }
