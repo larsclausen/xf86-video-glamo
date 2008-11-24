@@ -820,48 +820,13 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	miDCInitialize(pScreen, xf86GetPointerScreenFuncs());
 
 	/* colormap */
-	switch ((type = GlamoHWGetType(pScrn)))
-	{
-	/* XXX It would be simpler to use miCreateDefColormap() in all cases. */
-#ifdef USE_AFB
-	case GlamoHW_PLANES:
-		if (!afbCreateDefColormap(pScreen)) {
-			xf86DrvMsg(scrnIndex, X_ERROR,
-                                   "internal error: afbCreateDefColormap "
-				   "failed in GlamoScreenInit()\n");
-			return FALSE;
-		}
-		break;
-#endif
-	case GlamoHW_PACKED_PIXELS:
-		if (!miCreateDefColormap(pScreen)) {
-			xf86DrvMsg(scrnIndex, X_ERROR,
-                                   "internal error: miCreateDefColormap failed "
+	if (!miCreateDefColormap(pScreen)) {
+		xf86DrvMsg(scrnIndex, X_ERROR,
+                   "internal error: miCreateDefColormap failed "
 				   "in GlamoScreenInit()\n");
-			return FALSE;
-		}
-		break;
-	case GlamoHW_INTERLEAVED_PLANES:
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: interleaved planes are not yet "
-			   "supported by the Glamo driver\n");
-		return FALSE;
-	case GlamoHW_TEXT:
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: text mode is not supported by "
-			   "the Glamo driver\n");
-		return FALSE;
-	case GlamoHW_VGA_PLANES:
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: EGA/VGA planes are not yet "
-			   "supported by the Glamo driver\n");
-		return FALSE;
-	default:
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: unrecognised Glamo hardware type "
-			   "(%d) encountered in GlamoScreenInit()\n", type);
 		return FALSE;
 	}
+
 	flags = CMAP_PALETTED_TRUECOLOR;
 	if(!xf86HandleColormaps(pScreen, 256, 8, GlamoHWLoadPaletteWeak(), 
 				NULL, flags))
