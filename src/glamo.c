@@ -1119,7 +1119,7 @@ GlamoRandRSetConfig(ScrnInfoPtr pScrn, xorgRRConfig *config)
 
         default:
             xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                    "Unexpected rotation in NVRandRSetConfig!\n");
+                    "Unexpected rotation in GlamoRandRSetConfig!\n");
             return FALSE;
     }
 
@@ -1130,10 +1130,7 @@ static Bool
 GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
 {
     xorgHWFlags *flag;
-
-	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "GlamoDriverFunc got here!\n");
-    
+  
     switch (op) {
 	case GET_REQUIRED_HW_INTERFACES:
 	    flag = (CARD32*)ptr;
