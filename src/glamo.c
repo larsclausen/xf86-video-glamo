@@ -361,7 +361,7 @@ GlamoProbe(DriverPtr drv, int flags)
 	if ((numDevSections = xf86MatchDevice(GLAMO_DRIVER_NAME, &devSections)) <= 0) 
 	    return FALSE;
 	
-	if (!xf86LoadDrvSubModule(drv, "Glamohw"))
+	if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	    return FALSE;
 	    
 	xf86LoaderReqSymLists(GlamoHWSymbols, NULL);
