@@ -180,16 +180,16 @@ static const char *GlamoHWSymbols[] = {
 	"GlamoHWLoadPaletteWeak",
 
 	/* ScrnInfo hooks */
-	"GlamoHWAdjustFrameWeak",
-	"GlamoHWEnterVTWeak",
-	"GlamoHWLeaveVTWeak",
-	"GlamoHWModeInit",
-	"GlamoHWRestore",
-	"GlamoHWSave",
-	"GlamoHWSaveScreen",
-	"GlamoHWSaveScreenWeak",
-	"GlamoHWSwitchModeWeak",
-	"GlamoHWValidModeWeak",
+	"fbdevHWAdjustFrameWeak",
+	"fbdevHWEnterVTWeak",
+	"fbdevHWLeaveVTWeak",
+	"fbdevHWModeInit",
+	"fbdevHWRestore",
+	"fbdevHWSave",
+	"fbdevHWSaveScreen",
+	"fbdevHWSaveScreenWeak",
+	"fbdevHWSwitchModeWeak",
+	"fbdevHWValidModeWeak",
 
 	"GlamoHWDPMSSet",
 	"GlamoHWDPMSSetWeak",
@@ -319,11 +319,11 @@ static Bool GlamoPciProbe(DriverPtr drv, int entity_num,
 	    pScrn->Probe         = GlamoProbe;
 	    pScrn->PreInit       = GlamoPreInit;
 	    pScrn->ScreenInit    = GlamoScreenInit;
-	    pScrn->SwitchMode    = GlamoHWSwitchModeWeak();
-	    pScrn->AdjustFrame   = GlamoHWAdjustFrameWeak();
-	    pScrn->EnterVT       = GlamoHWEnterVTWeak();
-	    pScrn->LeaveVT       = GlamoHWLeaveVTWeak();
-	    pScrn->ValidMode     = GlamoHWValidModeWeak();
+	    pScrn->SwitchMode    = fbdevHWSwitchModeWeak();
+	    pScrn->AdjustFrame   = fbdevHWAdjustFrameWeak();
+	    pScrn->EnterVT       = fbdevHWEnterVTWeak();
+	    pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
+	    pScrn->ValidMode     = fbdevHWValidModeWeak();
 
 	    xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
 		       "claimed PCI slot %d@%d:%d:%d\n", 
@@ -433,11 +433,11 @@ GlamoProbe(DriverPtr drv, int flags)
 		    pScrn->Probe         = GlamoProbe;
 		    pScrn->PreInit       = GlamoPreInit;
 		    pScrn->ScreenInit    = GlamoScreenInit;
-		    pScrn->SwitchMode    = GlamoHWSwitchModeWeak();
-		    pScrn->AdjustFrame   = GlamoHWAdjustFrameWeak();
-		    pScrn->EnterVT       = GlamoHWEnterVTWeak();
-		    pScrn->LeaveVT       = GlamoHWLeaveVTWeak();
-		    pScrn->ValidMode     = GlamoHWValidModeWeak();
+		    pScrn->SwitchMode    = fbdevHWSwitchModeWeak();
+		    pScrn->AdjustFrame   = fbdevHWAdjustFrameWeak();
+		    pScrn->EnterVT       = fbdevHWEnterVTWeak();
+		    pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
+		    pScrn->ValidMode     = fbdevHWValidModeWeak();
 		    
 		    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 			       "using %s\n", dev ? dev : "default device");
