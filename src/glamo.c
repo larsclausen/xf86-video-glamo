@@ -1244,6 +1244,36 @@ GlamoDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen)
 }
 
 static Bool
+GlamoRandRGetInfo(ScrnInfoPtr pScrn, Rotation *rotations)
+{
+    *rotations = RR_Rotate_0 | RR_Rotate_90 | RR_Rotate_270;
+
+    return TRUE;
+}
+
+static Bool
+GlamoRandRSetConfig(ScrnInfoPtr pScrn, xorgRRConfig *config)
+{
+    switch(config->rotation) {
+        case RR_Rotate_0:
+            break;
+
+        case RR_Rotate_90:
+            break;
+
+        case RR_Rotate_270:
+            break;
+
+        default:
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                    "Unexpected rotation in NVRandRSetConfig!\n");
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+static Bool
 GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
 {
     xorgHWFlags *flag;
@@ -1253,6 +1283,10 @@ GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
 	    flag = (CARD32*)ptr;
 	    (*flag) = 0;
 	    return TRUE;
+	case RR_GET_INFO:
+	    return GlamoRandRGetInfo(pScrn, (Rotation*)data);
+	case RR_SET_CONFIG:
+        return GlamoRandRSetConfig(pScrn, (xorgRRConfig*)data);
 	default:
 	    return FALSE;
     }
