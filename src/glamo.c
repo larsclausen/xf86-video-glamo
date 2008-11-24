@@ -172,7 +172,7 @@ static const char *GlamoHWSymbols[] = {
 	"fbdevHWGetVidmem",
 	"GlamoHWLinearOffset",
 	"GlamoHWLoadPalette",
-	"GlamoHWMapVidmem",
+	"fbdevHWMapVidmem",
 	"GlamoHWUnmapVidmem",
 
 	/* colormap */
@@ -688,7 +688,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	       pScrn->offset.red,pScrn->offset.green,pScrn->offset.blue);
 #endif
 
-	if (NULL == (fPtr->fbmem = GlamoHWMapVidmem(pScrn))) {
+	if (NULL == (fPtr->fbmem = fbdevHWMapVidmem(pScrn))) {
 	        xf86DrvMsg(scrnIndex,X_ERROR,"mapping of video memory"
 			   " failed\n");
 		return FALSE;
