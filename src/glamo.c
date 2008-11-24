@@ -1093,7 +1093,7 @@ GlamoDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen)
 static Bool
 GlamoRandRGetInfo(ScrnInfoPtr pScrn, Rotation *rotations)
 {
-	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 			   "GlamoRandRGetInfo got here!\n");
 	
     *rotations = RR_Rotate_0 | RR_Rotate_90 | RR_Rotate_270;
@@ -1104,7 +1104,7 @@ GlamoRandRGetInfo(ScrnInfoPtr pScrn, Rotation *rotations)
 static Bool
 GlamoRandRSetConfig(ScrnInfoPtr pScrn, xorgRRConfig *config)
 {
-	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 			   "GlamoRandRSetConfig got here!\n");
 
     switch(config->rotation) {
@@ -1130,6 +1130,9 @@ static Bool
 GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
 {
     xorgHWFlags *flag;
+
+	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+			   "GlamoDriverFunc got here!\n");
     
     switch (op) {
 	case GET_REQUIRED_HW_INTERFACES:
