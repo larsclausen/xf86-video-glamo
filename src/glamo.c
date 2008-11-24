@@ -607,6 +607,14 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	/* Set display resolution */
 	xf86SetDpi(pScrn, 0, 0);
 
+	if (mod && xf86LoadSubModule(pScrn, "fb") == NULL) {
+		GlamoFreeRec(pScrn);
+		return FALSE;
+	}
+	if (mod && syms) {
+		xf86LoaderReqSymLists(fbSymbols, NULL);
+	}
+
 	/* Load shadow if needed */
 	if (fPtr->shadowFB) {
 		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "using shadow"
