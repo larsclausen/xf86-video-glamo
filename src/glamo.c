@@ -215,7 +215,7 @@ static XF86ModuleVersionInfo GlamoVersRec =
 	{0,0,0,0}
 };
 
-_X_EXPORT XF86ModuleData GlamoModuleData = { &GlamoVersRec, GlamoSetup, NULL };
+_X_EXPORT XF86ModuleData glamoModuleData = { &GlamoVersRec, GlamoSetup, NULL };
 
 pointer
 GlamoSetup(pointer module, pointer opts, int *errmaj, int *errmin)
