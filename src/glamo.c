@@ -167,7 +167,7 @@ static const char *GlamoHWSymbols[] = {
 
 	"fbdevHWGetDepth",
 	"GlamoHWGetLineLength",
-	"GlamoHWGetName",
+	"fbdevHWGetName",
 	"GlamoHWGetType",
 	"fbdevHWGetVidmem",
 	"GlamoHWLinearOffset",
@@ -530,7 +530,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	pScrn->videoRam  = fbdevHWGetVidmem(pScrn);
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "hardware: %s (video memory:"
-		   " %dkB)\n", GlamoHWGetName(pScrn), pScrn->videoRam/1024);
+		   " %dkB)\n", fbdevHWGetName(pScrn), pScrn->videoRam/1024);
 
 	/* handle options */
 	xf86CollectOptions(pScrn, NULL);
