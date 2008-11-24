@@ -165,7 +165,7 @@ static const char *GlamoHWSymbols[] = {
 	"GlamoHWSetVideoModes",
 	"GlamoHWUseBuildinMode",
 
-	"GlamoHWGetDepth",
+	"fbdevHWGetDepth",
 	"GlamoHWGetLineLength",
 	"GlamoHWGetName",
 	"GlamoHWGetType",
@@ -487,7 +487,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	/* open device */
 	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"Glamo")))
 		return FALSE;
-	default_depth = GlamoHWGetDepth(pScrn,&fbbpp);
+	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
 	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
 			     Support24bppFb | Support32bppFb | SupportConvert32to24 | SupportConvert24to32))
 		return FALSE;
