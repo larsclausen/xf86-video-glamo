@@ -695,14 +695,14 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	}
 	fPtr->fboff = fbdevHWLinearOffset(pScrn);
 
-	GlamoHWSave(pScrn);
+	fbdevHWSave(pScrn);
 
 	if (!GlamoHWModeInit(pScrn, pScrn->currentMode)) {
 		xf86DrvMsg(scrnIndex,X_ERROR,"mode initialization failed\n");
 		return FALSE;
 	}
-	GlamoHWSaveScreen(pScreen, SCREEN_SAVER_ON);
-	GlamoHWAdjustFrame(scrnIndex,0,0,0);
+	fbdevHWSaveScreen(pScreen, SCREEN_SAVER_ON);
+	fbdevHWAdjustFrame(scrnIndex,0,0,0);
 
 	/* mi layer */
 	miClearVisualTypes();
@@ -834,7 +834,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	xf86DPMSInit(pScreen, GlamoHWDPMSSetWeak(), 0);
 
-	pScreen->SaveScreen = GlamoHWSaveScreenWeak();
+	pScreen->SaveScreen = fbdevHWSaveScreenWeak();
 
 	/* Wrap the current CloseScreen function */
 	fPtr->CloseScreen = pScreen->CloseScreen;
