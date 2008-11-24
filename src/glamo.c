@@ -299,7 +299,7 @@ static Bool GlamoPciProbe(DriverPtr drv, int entity_num,
 {
     ScrnInfoPtr pScrn = NULL;
 
-    if (!xf86LoadDrvSubModule(drv, "Glamohw"))
+    if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	return FALSE;
 	    
     xf86LoaderReqSymLists(GlamoHWSymbols, NULL);
