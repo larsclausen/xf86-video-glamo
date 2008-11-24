@@ -1093,6 +1093,9 @@ GlamoDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen)
 static Bool
 GlamoRandRGetInfo(ScrnInfoPtr pScrn, Rotation *rotations)
 {
+	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+			   "GlamoRandRGetInfo got here!\n");
+	
     *rotations = RR_Rotate_0 | RR_Rotate_90 | RR_Rotate_270;
 
     return TRUE;
@@ -1101,6 +1104,9 @@ GlamoRandRGetInfo(ScrnInfoPtr pScrn, Rotation *rotations)
 static Bool
 GlamoRandRSetConfig(ScrnInfoPtr pScrn, xorgRRConfig *config)
 {
+	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+			   "GlamoRandRSetConfig got here!\n");
+
     switch(config->rotation) {
         case RR_Rotate_0:
             break;
