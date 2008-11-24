@@ -159,7 +159,7 @@ static const char *shadowSymbols[] = {
 	NULL
 };
 
-static const char *GlamoHWSymbols[] = {
+static const char *fbdevHWSymbols[] = {
 	"fbdevHWInit",
 	"fbdevHWProbe",
 	"fbdevHWSetVideoModes",
@@ -168,16 +168,16 @@ static const char *GlamoHWSymbols[] = {
 	"fbdevHWGetDepth",
 	"fbdevHWGetLineLength",
 	"fbdevHWGetName",
-	"GlamoHWGetType",
+	"fbdevHWGetType",
 	"fbdevHWGetVidmem",
 	"fbdevHWLinearOffset",
-	"GlamoHWLoadPalette",
+	"fbdevHWLoadPalette",
 	"fbdevHWMapVidmem",
-	"GlamoHWUnmapVidmem",
+	"fbdevHWUnmapVidmem",
 
 	/* colormap */
-	"GlamoHWLoadPalette",
-	"GlamoHWLoadPaletteWeak",
+	"fbdevHWLoadPalette",
+	"fbdevHWLoadPaletteWeak",
 
 	/* ScrnInfo hooks */
 	"fbdevHWAdjustFrameWeak",
@@ -191,8 +191,8 @@ static const char *GlamoHWSymbols[] = {
 	"fbdevHWSwitchModeWeak",
 	"fbdevHWValidModeWeak",
 
-	"GlamoHWDPMSSet",
-	"GlamoHWDPMSSetWeak",
+	"fbdevHWDPMSSet",
+	"fbdevHWDPMSSetWeak",
 
 	NULL
 };
@@ -226,7 +226,7 @@ GlamoSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 		setupDone = TRUE;
 		xf86AddDriver(&Glamo, module, HaveDriverFuncs);
 		LoaderRefSymLists(afbSymbols, fbSymbols,
-				  shadowSymbols, GlamoHWSymbols, NULL);
+				  shadowSymbols, fbdevHWSymbols, NULL);
 		return (pointer)1;
 	} else {
 		if (errmaj) *errmaj = LDR_ONCEONLY;
@@ -302,7 +302,7 @@ static Bool GlamoPciProbe(DriverPtr drv, int entity_num,
     if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	return FALSE;
 	    
-    xf86LoaderReqSymLists(GlamoHWSymbols, NULL);
+    xf86LoaderReqSymLists(fbdevHWSymbols, NULL);
 
     pScrn = xf86ConfigPciEntity(NULL, 0, entity_num, NULL, NULL,
 				NULL, NULL, NULL, NULL);
@@ -364,7 +364,7 @@ GlamoProbe(DriverPtr drv, int flags)
 	if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	    return FALSE;
 	    
-	xf86LoaderReqSymLists(GlamoHWSymbols, NULL);
+	xf86LoaderReqSymLists(fbdevHWSymbols, NULL);
 	
 	for (i = 0; i < numDevSections; i++) {
 	    Bool isIsa = FALSE;
@@ -834,11 +834,11 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	}
 
 	flags = CMAP_PALETTED_TRUECOLOR;
-	if(!xf86HandleColormaps(pScreen, 256, 8, GlamoHWLoadPaletteWeak(), 
+	if(!xf86HandleColormaps(pScreen, 256, 8, fbdevHWLoadPaletteWeak(), 
 				NULL, flags))
 		return FALSE;
 
-	xf86DPMSInit(pScreen, GlamoHWDPMSSetWeak(), 0);
+	xf86DPMSInit(pScreen, fbdevHWDPMSSetWeak(), 0);
 
 	pScreen->SaveScreen = fbdevHWSaveScreenWeak();
 
