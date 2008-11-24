@@ -170,7 +170,7 @@ static const char *GlamoHWSymbols[] = {
 	"fbdevHWGetName",
 	"GlamoHWGetType",
 	"fbdevHWGetVidmem",
-	"GlamoHWLinearOffset",
+	"fbdevHWLinearOffset",
 	"GlamoHWLoadPalette",
 	"fbdevHWMapVidmem",
 	"GlamoHWUnmapVidmem",
@@ -693,7 +693,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 			   " failed\n");
 		return FALSE;
 	}
-	fPtr->fboff = GlamoHWLinearOffset(pScrn);
+	fPtr->fboff = fbdevHWLinearOffset(pScrn);
 
 	GlamoHWSave(pScrn);
 
