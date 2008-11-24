@@ -160,7 +160,7 @@ static const char *shadowSymbols[] = {
 };
 
 static const char *GlamoHWSymbols[] = {
-	"GlamoHWInit",
+	"fbdevHWInit",
 	"fbdevHWProbe",
 	"GlamoHWSetVideoModes",
 	"GlamoHWUseBuildinMode",
@@ -485,7 +485,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	}
 
 	/* open device */
-	if (!GlamoHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"Glamo")))
+	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"Glamo")))
 		return FALSE;
 	default_depth = GlamoHWGetDepth(pScrn,&fbbpp);
 	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
