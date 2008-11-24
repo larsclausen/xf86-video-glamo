@@ -166,7 +166,7 @@ static const char *GlamoHWSymbols[] = {
 	"fbdevHWUseBuildinMode",
 
 	"fbdevHWGetDepth",
-	"GlamoHWGetLineLength",
+	"fbdevHWGetLineLength",
 	"fbdevHWGetName",
 	"GlamoHWGetType",
 	"fbdevHWGetVidmem",
@@ -742,7 +742,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	} else if (!fPtr->shadowFB) {
 		/* FIXME: this doesn't work for all cases, e.g. when each scanline
 			has a padding which is independent from the depth (controlfb) */
-		pScrn->displayWidth = GlamoHWGetLineLength(pScrn) /
+		pScrn->displayWidth = fbdevHWGetLineLength(pScrn) /
 				      (pScrn->bitsPerPixel / 8);
 
 		if (pScrn->displayWidth != pScrn->virtualX) {
@@ -903,7 +903,7 @@ GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
     if (fPtr->lineLength)
       *size = fPtr->lineLength;
     else
-      *size = fPtr->lineLength = GlamoHWGetLineLength(pScrn);
+      *size = fPtr->lineLength = fbdevHWGetLineLength(pScrn);
 
     return ((CARD8 *)fPtr->fbstart + row * fPtr->lineLength + offset);
 }
@@ -1058,7 +1058,7 @@ GlamoDGAAddModes(ScrnInfoPtr pScrn)
 	if (fPtr->lineLength)
 	  pDGAMode->bytesPerScanline = fPtr->lineLength;
 	else
-	  pDGAMode->bytesPerScanline = fPtr->lineLength = GlamoHWGetLineLength(pScrn);
+	  pDGAMode->bytesPerScanline = fPtr->lineLength = fbdevHWGetLineLength(pScrn);
 
 	pDGAMode->imageWidth = pMode->HDisplay;
 	pDGAMode->imageHeight =  pMode->VDisplay;
