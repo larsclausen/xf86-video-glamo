@@ -607,61 +607,6 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	/* Set display resolution */
 	xf86SetDpi(pScrn, 0, 0);
 
-	/* Load bpp-specific modules */
-	switch ((type = GlamoHWGetType(pScrn)))
-	{
-	case GlamoHW_PLANES:
-		mod = "afb";
-		syms = afbSymbols;
-		break;
-	case GlamoHW_PACKED_PIXELS:
-		switch (pScrn->bitsPerPixel)
-		{
-		case 8:
-		case 16:
-		case 24:
-		case 32:
-			mod = "fb";
-			syms = fbSymbols;
-			break;
-		default:
-			xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			"unsupported number of bits per pixel: %d",
-			pScrn->bitsPerPixel);
-			return FALSE;
-		}
-		break;
-	case GlamoHW_INTERLEAVED_PLANES:
-               /* Not supported yet, don't know what to do with this */
-               xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                          "interleaved planes are not yet supported by the "
-			  "Glamo driver\n");
-		return FALSE;
-	case GlamoHW_TEXT:
-               /* This should never happen ...
-                * we should check for this much much earlier ... */
-               xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                          "text mode is not supported by the Glamo driver\n");
-		return FALSE;
-       case GlamoHW_VGA_PLANES:
-               /* Not supported yet */
-               xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                          "EGA/VGA planes are not yet supported by the Glamo "
-			  "driver\n");
-               return FALSE;
-       default:
-               xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                          "unrecognised Glamo hardware type (%d)\n", type);
-               return FALSE;
-	}
-	if (mod && xf86LoadSubModule(pScrn, mod) == NULL) {
-		GlamoFreeRec(pScrn);
-		return FALSE;
-	}
-	if (mod && syms) {
-		xf86LoaderReqSymLists(syms, NULL);
-	}
-
 	/* Load shadow if needed */
 	if (fPtr->shadowFB) {
 		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "using shadow"
