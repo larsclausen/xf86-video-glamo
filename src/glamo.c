@@ -161,7 +161,7 @@ static const char *shadowSymbols[] = {
 
 static const char *GlamoHWSymbols[] = {
 	"GlamoHWInit",
-	"GlamoHWProbe",
+	"fbdevHWProbe",
 	"GlamoHWSetVideoModes",
 	"GlamoHWUseBuildinMode",
 
@@ -312,7 +312,7 @@ static Bool GlamoPciProbe(DriverPtr drv, int entity_num,
 						  pScrn->entityInstanceList[0]);
 
 	device = xf86FindOptionValue(devSection->options, "Glamo");
-	if (GlamoHWProbe(NULL, device, NULL)) {
+	if (fbdevHWProbe(NULL, device, NULL)) {
 	    pScrn->driverVersion = GLAMO_VERSION;
 	    pScrn->driverName    = GLAMO_DRIVER_NAME;
 	    pScrn->name          = GLAMO_NAME;
@@ -386,7 +386,7 @@ GlamoProbe(DriverPtr drv, int flags)
 		    isIsa = TRUE;
 		  
 	    }
-	    if (GlamoHWProbe(NULL,dev,NULL)) {
+	    if (fbdevHWProbe(NULL,dev,NULL)) {
 		pScrn = NULL;
 #ifndef XSERVER_LIBPCIACCESS
 		if (isPci) {
