@@ -162,8 +162,8 @@ static const char *shadowSymbols[] = {
 static const char *GlamoHWSymbols[] = {
 	"fbdevHWInit",
 	"fbdevHWProbe",
-	"GlamoHWSetVideoModes",
-	"GlamoHWUseBuildinMode",
+	"fbdevHWSetVideoModes",
+	"fbdevHWUseBuildinMode",
 
 	"fbdevHWGetDepth",
 	"GlamoHWGetLineLength",
@@ -581,7 +581,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	/* select video modes */
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "checking modes against framebuffer device...\n");
-	GlamoHWSetVideoModes(pScrn);
+	fbdevHWSetVideoModes(pScrn);
 
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "checking modes against monitor...\n");
 	{
@@ -596,7 +596,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	}
 
 	if (NULL == pScrn->modes)
-		GlamoHWUseBuildinMode(pScrn);
+		fbdevHWUseBuildinMode(pScrn);
 	pScrn->currentMode = pScrn->modes;
 
 	/* First approximation, may be refined in ScreenInit */
