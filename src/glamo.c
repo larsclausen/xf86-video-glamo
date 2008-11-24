@@ -613,64 +613,9 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	}
 	xf86LoaderReqSymLists(fbSymbols, NULL);
 
-	/* Load shadow if needed */
-	if (fPtr->shadowFB) {
-		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG, "using shadow"
-			   " framebuffer\n");
-		if (!xf86LoadSubModule(pScrn, "shadow")) {
-			GlamoFreeRec(pScrn);
-			return FALSE;
-		}
-		xf86LoaderReqSymLists(shadowSymbols, NULL);
-	}
-
 	TRACE_EXIT("PreInit");
 	return TRUE;
 }
-
-
-static Bool
-GlamoCreateScreenResources(ScreenPtr pScreen)
-{
-    PixmapPtr pPixmap;
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
-    GlamoPtr fPtr = GlamoPTR(pScrn);
-    Bool ret;
-
-    pScreen->CreateScreenResources = fPtr->CreateScreenResources;
-    ret = pScreen->CreateScreenResources(pScreen);
-    pScreen->CreateScreenResources = GlamoCreateScreenResources;
-
-    if (!ret)
-	return FALSE;
-
-    pPixmap = pScreen->GetScreenPixmap(pScreen);
-
-    if (!shadowAdd(pScreen, pPixmap, fPtr->rotate ?
-		   shadowUpdateRotatePackedWeak() : shadowUpdatePackedWeak(),
-		   GlamoWindowLinear, fPtr->rotate, NULL)) {
-	return FALSE;
-    }
-
-    return TRUE;
-}
-
-static Bool
-GlamoShadowInit(ScreenPtr pScreen)
-{
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
-    GlamoPtr fPtr = GlamoPTR(pScrn);
-    
-    if (!shadowSetup(pScreen)) {
-	return FALSE;
-    }
-
-    fPtr->CreateScreenResources = pScreen->CreateScreenResources;
-    pScreen->CreateScreenResources = GlamoCreateScreenResources;
-
-    return TRUE;
-}
-
 
 static Bool
 GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
@@ -739,7 +684,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	  int tmp = pScrn->virtualX;
 	  pScrn->virtualX = pScrn->displayWidth = pScrn->virtualY;
 	  pScrn->virtualY = tmp;
-	} else if (!fPtr->shadowFB) {
+	} else {
 		/* FIXME: this doesn't work for all cases, e.g. when each scanline
 			has a padding which is independent from the depth (controlfb) */
 		pScrn->displayWidth = fbdevHWGetLineLength(pScrn) /
@@ -759,19 +704,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	fPtr->fbstart = fPtr->fbmem + fPtr->fboff;
 
-	if (fPtr->shadowFB) {
-	    fPtr->shadow = xcalloc(1, pScrn->virtualX * pScrn->virtualY *
-				   pScrn->bitsPerPixel);
-
-	    if (!fPtr->shadow) {
-		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "Failed to allocate shadow framebuffer\n");
-		return FALSE;
-	    }
-	}
-
-    ret = fbScreenInit(pScreen, fPtr->shadowFB ? fPtr->shadow
-					   : fPtr->fbstart, pScrn->virtualX,
+    ret = fbScreenInit(pScreen, fPtr->fbstart, pScrn->virtualX,
 					   pScrn->virtualY, pScrn->xDpi,
 					   pScrn->yDpi, pScrn->displayWidth,
 					   pScrn->bitsPerPixel);
@@ -799,12 +732,6 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	if (init_picture && !fbPictureInit(pScreen, NULL, 0))
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
-
-	if (fPtr->shadowFB && !GlamoShadowInit(pScreen)) {
-	    xf86DrvMsg(scrnIndex, X_ERROR,
-		       "shadow framebuffer initialization failed\n");
-	    return FALSE;
-	}
 
 	if (!fPtr->rotate)
 	  GlamoDGAInit(pScrn, pScreen);
