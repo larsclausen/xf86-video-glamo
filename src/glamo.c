@@ -358,7 +358,7 @@ GlamoProbe(DriverPtr drv, int flags)
 	if (flags & PROBE_DETECT)
 		return FALSE;
 
-	if ((numDevSections = xf86MatchDevice(Glamo_DRIVER_NAME, &devSections)) <= 0) 
+	if ((numDevSections = xf86MatchDevice(GLAMO_DRIVER_NAME, &devSections)) <= 0) 
 	    return FALSE;
 	
 	if (!xf86LoadDrvSubModule(drv, "Glamohw"))
@@ -764,82 +764,13 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	    }
 	}
 
-	switch ((type = GlamoHWGetType(pScrn)))
-	{
-#ifdef USE_AFB
-	case GlamoHW_PLANES:
-		if (fPtr->rotate)
-		{
-		  xf86DrvMsg(scrnIndex, X_ERROR,
-			     "internal error: rotate not supported for afb\n");
-		  ret = FALSE;
-		  break;
-		}
-		if (fPtr->shadowFB)
-		{
-		  xf86DrvMsg(scrnIndex, X_ERROR,
-			     "internal error: shadow framebuffer not supported"
-			     " for afb\n");
-		  ret = FALSE;
-		  break;
-		}
-		ret = afbScreenInit
-			(pScreen, fPtr->fbstart, pScrn->virtualX, pScrn->virtualY,
-			 pScrn->xDpi, pScrn->yDpi, pScrn->displayWidth);
-		break;
-#endif
-	case GlamoHW_PACKED_PIXELS:
-		switch (pScrn->bitsPerPixel) {
-		case 8:
-		case 16:
-		case 24:
-		case 32:
-			ret = fbScreenInit(pScreen, fPtr->shadowFB ? fPtr->shadow
+    ret = fbScreenInit(pScreen, fPtr->shadowFB ? fPtr->shadow
 					   : fPtr->fbstart, pScrn->virtualX,
 					   pScrn->virtualY, pScrn->xDpi,
 					   pScrn->yDpi, pScrn->displayWidth,
 					   pScrn->bitsPerPixel);
-			init_picture = 1;
-			break;
-	 	default:
-			xf86DrvMsg(scrnIndex, X_ERROR,
-				   "internal error: invalid number of bits per"
-				   " pixel (%d) encountered in"
-				   " GlamoScreenInit()\n", pScrn->bitsPerPixel);
-			ret = FALSE;
-			break;
-		}
-		break;
-	case GlamoHW_INTERLEAVED_PLANES:
-		/* This should never happen ...
-		* we should check for this much much earlier ... */
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: interleaved planes are not yet "
-			   "supported by the Glamo driver\n");
-		ret = FALSE;
-		break;
-	case GlamoHW_TEXT:
-		/* This should never happen ...
-		* we should check for this much much earlier ... */
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: text mode is not supported by the "
-			   "Glamo driver\n");
-		ret = FALSE;
-		break;
-	case GlamoHW_VGA_PLANES:
-		/* Not supported yet */
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: EGA/VGA Planes are not yet "
-			   "supported by the Glamo driver\n");
-		ret = FALSE;
-		break;
-	default:
-		xf86DrvMsg(scrnIndex, X_ERROR,
-		           "internal error: unrecognised hardware type (%d) "
-			   "encountered in GlamoScreenInit()\n", type);
-		ret = FALSE;
-		break;
-	}
+	init_picture = 1;
+
 	if (!ret)
 		return FALSE;
 
