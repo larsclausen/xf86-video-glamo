@@ -697,7 +697,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	fbdevHWSave(pScrn);
 
-	if (!GlamoHWModeInit(pScrn, pScrn->currentMode)) {
+	if (!fbdevHWModeInit(pScrn, pScrn->currentMode)) {
 		xf86DrvMsg(scrnIndex,X_ERROR,"mode initialization failed\n");
 		return FALSE;
 	}
@@ -860,8 +860,8 @@ GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
 	GlamoPtr fPtr = GlamoPTR(pScrn);
 	
-	GlamoHWRestore(pScrn);
-	GlamoHWUnmapVidmem(pScrn);
+	fbdevHWRestore(pScrn);
+	fbdevHWUnmapVidmem(pScrn);
 	if (fPtr->shadow) {
 	    xfree(fPtr->shadow);
 	    fPtr->shadow = NULL;
