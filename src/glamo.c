@@ -289,7 +289,7 @@ GlamoAvailableOptions(int chipid, int busid)
 static void
 GlamoIdentify(int flags)
 {
-	xf86PrintChipsets(Glamo_NAME, "driver for framebuffer", GlamoChipsets);
+	xf86PrintChipsets(GLAMO_NAME, "driver for glamo", GlamoChipsets);
 }
 
 
@@ -313,9 +313,9 @@ static Bool GlamoPciProbe(DriverPtr drv, int entity_num,
 
 	device = xf86FindOptionValue(devSection->options, "Glamo");
 	if (GlamoHWProbe(NULL, device, NULL)) {
-	    pScrn->driverVersion = Glamo_VERSION;
-	    pScrn->driverName    = Glamo_DRIVER_NAME;
-	    pScrn->name          = Glamo_NAME;
+	    pScrn->driverVersion = GLAMO_VERSION;
+	    pScrn->driverName    = GLAMO_DRIVER_NAME;
+	    pScrn->name          = GLAMO_NAME;
 	    pScrn->Probe         = GlamoProbe;
 	    pScrn->PreInit       = GlamoPreInit;
 	    pScrn->ScreenInit    = GlamoScreenInit;
@@ -400,8 +400,8 @@ GlamoProbe(DriverPtr drv, int flags)
 						      NULL,RES_SHARED_VGA,
 						      NULL,NULL,NULL,NULL);
 		    /* xf86DrvMsg() can't be called without setting these */
-		    pScrn->driverName    = Glamo_DRIVER_NAME;
-		    pScrn->name          = Glamo_NAME;
+		    pScrn->driverName    = GLAMO_DRIVER_NAME;
+		    pScrn->name          = GLAMO_NAME;
 		    xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
 			       "claimed PCI slot %d:%d:%d\n",bus,device,func);
 
@@ -427,9 +427,9 @@ GlamoProbe(DriverPtr drv, int flags)
 		if (pScrn) {
 		    foundScreen = TRUE;
 		    
-		    pScrn->driverVersion = Glamo_VERSION;
-		    pScrn->driverName    = Glamo_DRIVER_NAME;
-		    pScrn->name          = Glamo_NAME;
+		    pScrn->driverVersion = GLAMO_VERSION;
+		    pScrn->driverName    = GLAMO_DRIVER_NAME;
+		    pScrn->name          = GLAMO_NAME;
 		    pScrn->Probe         = GlamoProbe;
 		    pScrn->PreInit       = GlamoPreInit;
 		    pScrn->ScreenInit    = GlamoScreenInit;
