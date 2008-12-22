@@ -1,8 +1,8 @@
 /*
- * Copyright © 2007 OpenMoko, Inc.
+ * Copyright  2007 OpenMoko, Inc.
  *
  * This driver is based on Xati,
- * Copyright © 2003 Eric Anholt
+ * Copyright  2003 Eric Anholt
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -31,7 +31,6 @@
 #include "glamo-regs.h"
 #include "glamo-cmdq.h"
 #include "glamo-draw.h"
-#include "kaa.h"
 
 static const CARD8 GLAMOSolidRop[16] = {
     /* GXclear      */      0x00,         /* 0 */
@@ -168,11 +167,7 @@ MarkForWait(ScreenPtr pScreen)
 {
 	KdScreenPriv(pScreen);
 	GLAMOScreenInfo(pScreenPriv);
-	if (glamos->use_exa) {
-		exaMarkSync(pScreen);
-	} else {
-		kaaMarkSync(pScreen);
-	}
+	exaMarkSync(pScreen);
 }
 
 static void
@@ -180,11 +175,7 @@ WaitSync(ScreenPtr pScreen)
 {
 	KdScreenPriv(pScreen);
 	GLAMOScreenInfo(pScreenPriv);
-	if (glamos->use_exa) {
-		exaWaitSync(pScreen);
-	} else {
-		kaaWaitSync(pScreen);
-	}
+	exaWaitSync(pScreen);
 }
 
 void
@@ -247,7 +238,6 @@ GLAMOPrepareSolid(PixmapPtr pPix, int alu, Pixel pm, Pixel fg)
 	END_CMDQ();
 	*/
 
-	kaaMarkSync(glamos->screen->pScreen);
 	GLAMO_LOG("leave\n");
 
 	return TRUE;
@@ -283,7 +273,6 @@ static void
 GLAMODoneSolid(void)
 {
 	GLAMOScreenInfo *glamos = accel_glamos;
-	kaaWaitSync(glamos->screen->pScreen);
 	if (glamos->cmd_queue_cache)
 		GLAMOFlushCMDQCache(glamos, 1);
 }
@@ -325,7 +314,6 @@ GLAMOPrepareCopy(PixmapPtr pSrc, PixmapPtr pDst,
 	glamos->srcPixmap = pSrc;
 	glamos->dstPixmap = pDst;
 
-	kaaMarkSync(pDst->drawable.pScreen);
 	GLAMO_LOG("leave\n");
 
 	return TRUE;
@@ -374,11 +362,8 @@ GLAMODoneCopy(void)
 {
 	GLAMOScreenInfo *glamos = accel_glamos;
 	GLAMO_LOG("enter\n");
-	kaaWaitSync(glamos->screen->pScreen);
-	kaaMarkSync(glamos->screen->pScreen);
 	if (glamos->cmd_queue_cache)
 		GLAMOFlushCMDQCache(glamos, 1);
-	kaaWaitSync(glamos->screen->pScreen);
 	GLAMO_LOG("leave\n");
 }
 
@@ -422,10 +407,8 @@ GLAMOBlockHandler(pointer blockData, OSTimePtr timeout, pointer readmask)
 	 * make sure that the cmd queue cache
 	 * has been flushed.
 	 */
-	if (glamos->use_exa)
-		exaWaitSync(pScreen);
-	else
-		kaaWaitSync(pScreen);
+	exaWaitSync(pScreen);
+
 	if (glamos->cmd_queue_cache)
 		GLAMOFlushCMDQCache(glamos, 1);
 }
@@ -436,117 +419,53 @@ GLAMOWakeupHandler(pointer blockData, int result, pointer readmask)
 }
 
 Bool
-GLAMODrawKaaInit(ScreenPtr pScreen)
+GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 {
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
-	KdScreenInfo *screen = pScreenPriv->screen;
-	int offscreen_memory_size = 0;  
+	GlamoPtr pGlamo = GlamoPTR(pScrn)
 
-	offscreen_memory_size =
-            screen->memory_size - screen->off_screen_base;
-
-	LogMessage(X_INFO,
-		   "vram size:%d, "
-		   "onscreen vram size:%d, "
-		   "offscreen vram size:%d\n",
-		   screen->memory_size,
-		   screen->off_screen_base,
-		   offscreen_memory_size);
-
-	GLAMO_LOG("enter\n");
-
-	RegisterBlockAndWakeupHandlers(GLAMOBlockHandler, GLAMOWakeupHandler,
-	    pScreen);
-
-	memset(&glamos->kaa, 0, sizeof(KaaScreenInfoRec));
-	glamos->kaa.waitMarker = GLAMOWaitMarker;
-	glamos->kaa.PrepareSolid = GLAMOPrepareSolid;
-	glamos->kaa.Solid = GLAMOSolid;
-	glamos->kaa.DoneSolid = GLAMODoneSolid;
-	glamos->kaa.PrepareCopy = GLAMOPrepareCopy;
-	glamos->kaa.Copy = GLAMOCopy;
-	glamos->kaa.DoneCopy = GLAMODoneCopy;
-	glamos->kaa.UploadToScreen = GLAMOUploadToScreen;
-
-	if (offscreen_memory_size > 0) {
-		glamos->kaa.flags = KAA_OFFSCREEN_PIXMAPS;
-	}
-	glamos->kaa.offsetAlign = 16;
-	glamos->kaa.pitchAlign = 16;
-
-	if (!kaaDrawInit(pScreen, &glamos->kaa)) {
-		GLAMO_LOG_ERROR("failed to init kaa\n");
-		return FALSE;
-	}
-
-	GLAMO_LOG("leave\n");
-	return TRUE;
-}
-
-/**
- * exaDDXDriverInit is required by the top-level EXA module, and is used by
- * the xorg DDX to hook in its EnableDisableFB wrapper.  We don't need it, since
- * we won't be enabling/disabling the FB.
- */
-#ifndef GetGLAMOExaPriv
-#define GetGLAMOExaPriv(pScreen) \
-(GLAMOScreenInfo*)pScreen->devPrivates[glamoExaScreenPrivateIndex].ptr
-#endif
-void
-exaDDXDriverInit(ScreenPtr pScreen)
-{
-}
-
-static int glamoExaScreenPrivateIndex;
-
-Bool
-GLAMODrawExaInit(ScreenPtr pScreen)
-{
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
-	KdScreenInfo *screen = pScreenPriv->screen;
 	int offscreen_memory_size = 0;
-	char *use_exa = NULL;
 	Bool success = FALSE;
+	ExaDriverPtr exa;
 
 	GLAMO_LOG("enter\n");
 
-	memset(&glamos->exa, 0, sizeof(ExaDriverRec));
-	glamos->exa.memoryBase = screen->memory_base;
-	glamos->exa.memorySize = screen->memory_size;
-	glamos->exa.offScreenBase = screen->off_screen_base;
+	exa = pGlamo->exa = exaDriverAlloc();
+    if(!exa) return FALSE;
+	
+	exa->memoryBase = pGlamo->memory_base;
+	exa->memorySize = pGlamo->memory_size;
+	exa->offScreenBase = pGlamo->off_screen_base;
 
-	glamos->exa.exa_major = 2;
-	glamos->exa.exa_minor = 0;
+	exa->exa_major = 2;
+	exa->exa_minor = 0;
 
-	glamos->exa.PrepareSolid = GLAMOExaPrepareSolid;
-	glamos->exa.Solid = GLAMOExaSolid;
-	glamos->exa.DoneSolid = GLAMOExaDoneSolid;
+	exa->PrepareSolid = GLAMOExaPrepareSolid;
+	exa->Solid = GLAMOExaSolid;
+	exa->DoneSolid = GLAMOExaDoneSolid;
 
-	glamos->exa.PrepareCopy = GLAMOExaPrepareCopy;
-	glamos->exa.Copy = GLAMOExaCopy;
-	glamos->exa.DoneCopy = GLAMOExaDoneCopy;
+	exa->PrepareCopy = GLAMOExaPrepareCopy;
+	exa->Copy = GLAMOExaCopy;
+	exa->DoneCopy = GLAMOExaDoneCopy;
 
-	glamos->exa.CheckComposite = GLAMOExaCheckComposite;
-	glamos->exa.PrepareComposite = GLAMOExaPrepareComposite;
-	glamos->exa.Composite = GLAMOExaComposite;
-	glamos->exa.DoneComposite = GLAMOExaDoneComposite;
+	exa->CheckComposite = GLAMOExaCheckComposite;
+	exa->PrepareComposite = GLAMOExaPrepareComposite;
+	exa->Composite = GLAMOExaComposite;
+	exa->DoneComposite = GLAMOExaDoneComposite;
 
 
-	glamos->exa.DownloadFromScreen = GLAMOExaDownloadFromScreen;
-	glamos->exa.UploadToScreen = GLAMOExaUploadToScreen;
+	exa->DownloadFromScreen = GLAMOExaDownloadFromScreen;
+	exa->UploadToScreen = GLAMOExaUploadToScreen;
 
 	/*glamos->exa.MarkSync = GLAMOExaMarkSync;*/
-	glamos->exa.WaitMarker = GLAMOExaWaitMarker;
+	exa->WaitMarker = GLAMOExaWaitMarker;
 
-	glamos->exa.pixmapOffsetAlign = 1;
-	glamos->exa.pixmapPitchAlign = 1;
+	exa->pixmapOffsetAlign = 1;
+	exa->pixmapPitchAlign = 1;
 
-	glamos->exa.maxX = 640;
-	glamos->exa.maxY = 640;
+	exa->maxX = 640;
+	exa->maxY = 640;
 
-	glamos->exa.flags = EXA_OFFSCREEN_PIXMAPS;
+	exa->flags = EXA_OFFSCREEN_PIXMAPS;
 
 	RegisterBlockAndWakeupHandlers(GLAMOBlockHandler,
 				       GLAMOWakeupHandler,
@@ -554,7 +473,7 @@ GLAMODrawExaInit(ScreenPtr pScreen)
 
 	glamoExaScreenPrivateIndex = AllocateScreenPrivateIndex() ;
 	pScreen->devPrivates[glamoExaScreenPrivateIndex].ptr = glamos;
-	success = exaDriverInit(pScreen, &glamos->exa);
+	success = exaDriverInit(pScreen, exa);
 	if (success) {
 		ErrorF("Initialized EXA acceleration\n");
 	} else {
@@ -563,80 +482,6 @@ GLAMODrawExaInit(ScreenPtr pScreen)
 	GLAMO_LOG("leave\n");
 
 	return success;
-}
-
-Bool
-GLAMODrawInit(ScreenPtr pScreen)
-{
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
-	KdScreenInfo *screen = pScreenPriv->screen;
-	int offscreen_memory_size = 0;
-	char *use_exa = NULL;
-
-	LogMessage(X_INFO, "Screen: %d/%d depth/bpp\n",
-		  pScreenPriv->screen->fb[0].depth,
-		  pScreenPriv->screen->fb[0].bitsPerPixel);
-
-	use_exa = getenv("USE_EXA");
-	if (use_exa && !strcmp(use_exa, "yes")) {
-		glamos->use_exa = TRUE;
-		return GLAMODrawExaInit(pScreen);
-	} else {
-		glamos->use_exa = FALSE;
-		return GLAMODrawKaaInit(pScreen);
-	}
-}
-
-#if 0
-static void
-GLAMOScratchSave(ScreenPtr pScreen, KdOffscreenArea *area)
-{
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
-
-	glamos->scratch_area = NULL;
-}
-#endif
-
-void
-GLAMODrawEnable(ScreenPtr pScreen)
-{
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
-
-	GLAMO_LOG("enter\n");
-	GLAMOCMDQCacheSetup(pScreen);
-	GLAMODrawSetup(pScreen);
-	GLAMOEngineWait(pScreen, GLAMO_ENGINE_ALL);
-	GLAMO_LOG("leave\n");
-
-
-}
-
-
-void
-GLAMODrawDisable(ScreenPtr pScreen)
-{
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
-	if (!glamos->use_exa) {
-		kaaWaitSync(pScreen);
-	}
-	GLAMOCMQCacheTeardown(pScreen);
-}
-
-void
-GLAMODrawFini(ScreenPtr pScreen)
-{
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
-	RemoveBlockAndWakeupHandlers(GLAMOBlockHandler, GLAMOWakeupHandler,
-	    pScreen);
-
-	if (!glamos->use_exa) {
-		kaaDrawFini(pScreen);
-	}
 }
 
 /***************************************

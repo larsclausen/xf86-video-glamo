@@ -23,9 +23,6 @@
 
 /* for visuals */
 #include "fb.h"
-#ifdef USE_AFB
-#include "afb.h"
-#endif
 
 #include "xf86Resources.h"
 #include "xf86RAC.h"
@@ -37,6 +34,8 @@
 #ifdef XSERVER_LIBPCIACCESS
 #include <pciaccess.h>
 #endif
+
+#include "glamo.h"
 
 static Bool debug = 0;
 
@@ -235,29 +234,6 @@ GlamoSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 }
 
 #endif /* XFree86LOADER */
-
-/* -------------------------------------------------------------------- */
-/* our private data, and two functions to allocate/free this            */
-
-typedef struct {
-	unsigned char*			fbstart;
-	unsigned char*			fbmem;
-	int				fboff;
-	int				lineLength;
-	int				rotate;
-	Bool				shadowFB;
-	void				*shadow;
-	CloseScreenProcPtr		CloseScreen;
-	CreateScreenResourcesProcPtr	CreateScreenResources;
-	void				(*PointerMoved)(int index, int x, int y);
-	EntityInfoPtr			pEnt;
-	/* DGA info */
-	DGAModePtr			pDGAMode;
-	int				nDGAMode;
-	OptionInfoPtr			Options;
-} GlamoRec, *GlamoPtr;
-
-#define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
 
 static Bool
 GlamoGetRec(ScrnInfoPtr pScrn)

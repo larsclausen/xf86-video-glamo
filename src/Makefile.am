@@ -29,4 +29,9 @@ glamo_drv_la_LDFLAGS = -module -avoid-version
 glamo_drv_ladir = @moduledir@/drivers
 
 glamo_drv_la_SOURCES = \
-         glamo.c
+         glamo.c \
+         glamo-cmdq.c \
+         glamo-funcs.c \
+         glamo-draw.c \
+         glamo-stub.c
+

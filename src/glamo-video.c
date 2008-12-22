@@ -24,7 +24,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include <kdrive-config.h>
+#include <config.h>
 #endif
 
 
@@ -35,7 +35,6 @@
 #include "glamo-draw.h"
 #include "glamo-regs.h"
 #include "glamo-log.h"
-#include "kaa.h"
 
 #include <X11/extensions/Xv.h>
 #include "fourcc.h"

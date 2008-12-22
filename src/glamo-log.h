@@ -28,7 +28,7 @@
 #define _GLAMO_LOG_H_
 
 #ifdef HAVE_CONFIG_H
-#include <kdrive-config.h>
+#include <config.h>
 #endif
 
 #include <assert.h>
