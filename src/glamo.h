@@ -97,11 +97,7 @@ typedef struct {
 	DGAModePtr			pDGAMode;
 	int				nDGAMode;
 	OptionInfoPtr			Options;
-} GlamoRec, *GlamoPtr;
 
-#define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
-
-typedef struct _GLAMOScreenInfo {
 	PixmapPtr srcPixmap;
 	PixmapPtr dstPixmap;
 	CARD32 src_offset;
@@ -110,6 +106,12 @@ typedef struct _GLAMOScreenInfo {
 	CARD32 dst_pitch;
 	CARD32 settings;
 	CARD32 foreground;
+
+} GlamoRec, *GlamoPtr;
+
+#define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
+
+typedef struct _GLAMOScreenInfo {
 
 	GLAMOCardInfo *glamoc;
 	KdScreenInfo *screen;

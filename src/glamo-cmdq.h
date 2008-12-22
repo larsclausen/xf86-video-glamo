@@ -1,8 +1,8 @@
 /*
- * Copyright © 2007 OpenMoko, Inc.
+ * Copyright  2007 OpenMoko, Inc.
  *
  * This driver is based on Xati,
- * Copyright © 2004 Eric Anholt
+ * Copyright  2004 Eric Anholt
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -33,16 +33,16 @@
 #define RING_LOCALS	CARD16 *__head; int __count
 #define BEGIN_CMDQ(n)							\
 do {									\
-	if ((glamos->cmd_queue_cache->used + 2 * (n)) >			\
-	    glamos->cmd_queue_cache->size) {				\
-		GLAMOFlushCMDQCache(glamos, 1);				\
+	if ((pGlamo->cmd_queue_cache->used + 2 * (n)) >			\
+	    pGlamo->cmd_queue_cache->size) {				\
+		GLAMOFlushCMDQCache(pGlamo, 1);				\
 	}								\
-	__head = (CARD16 *)((char *)glamos->cmd_queue_cache->address +	\
-	    glamos->cmd_queue_cache->used);				\
+	__head = (CARD16 *)((char *)pGlamo->cmd_queue_cache->address +	\
+	    pGlamo->cmd_queue_cache->used);				\
 	__count = 0;							\
 } while (0)
 #define END_CMDQ() do {							\
-	glamos->cmd_queue_cache->used += __count * 2;			\
+	pGlamo->cmd_queue_cache->used += __count * 2;			\
 } while (0)
 
 #else
@@ -51,12 +51,12 @@ do {									\
 	CARD16 *__head; int __count, __total, __reg, __packet0count
 #define BEGIN_CMDQ(n)							\
 do {									\
-	if ((glamos->cmd_queue_cache->used + 2 * (n)) >			\
-	    glamos->cmd_queue_cache->size) {				\
-		GLAMOFlushCMDQCache(glamos, 1);				\
+	if ((pGlamo->cmd_queue_cache->used + 2 * (n)) >			\
+	    pGlamo->cmd_queue_cache->size) {				\
+		GLAMOFlushCMDQCache(pGlamo, 1);				\
 	}								\
-	__head = (CARD16 *)((char *)glamos->cmd_queue_cache->address +	\
-	    glamos->cmd_queue_cache->used);				\
+	__head = (CARD16 *)((char *)pGlamo->cmd_queue_cache->address +	\
+	    pGlamo->cmd_queue_cache->used);				\
 	__count = 0;							\
 	__total = n;							\
 	__reg = 0;								\
@@ -66,7 +66,7 @@ do {									\
 	if (__count != __total)						\
 		FatalError("count != total (%d vs %d) at %s:%d\n",	 \
 		     __count, __total, __FILE__, __LINE__);		\
-	glamos->cmd_queue_cache->used += __count * 2;			\
+	pGlamo->cmd_queue_cache->used += __count * 2;			\
 } while (0)
 
 #endif
@@ -121,10 +121,10 @@ tv_le(struct timeval *tv1, struct timeval *tv2)
 #define TIMEDOUT()	(!tv_le(&_curtime, &_target))
 
 MemBuf *
-GLAMOCreateCMDQCache(GLAMOScreenInfo *glamos);
+GLAMOCreateCMDQCache(GlamoPtr *pGlamo);
 
 void
-GLAMOFlushCMDQCache(GLAMOScreenInfo *glamos, Bool discard);
+GLAMOFlushCMDQCache(GlamoPtr *pGlamo, Bool discard);
 
 void
 GLAMOCMDQCacheSetup(ScreenPtr pScreen);
