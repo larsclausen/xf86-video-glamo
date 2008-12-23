@@ -1,8 +1,8 @@
 /*
- * Copyright © 2007 OpenMoko, Inc.
+ * Copyright  2007 OpenMoko, Inc.
  *
  * This driver is based on Xati,
- * Copyright © 2004 Eric Anholt
+ * Copyright  2004 Eric Anholt
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -34,9 +34,9 @@
 static void GLAMOCMDQResetCP(ScreenPtr pScreen);
 #ifndef NDEBUG
 static void
-GLAMODebugFifo(GLAMOScreenInfo *glamos)
+GLAMODebugFifo(GlamoPtr *pGlamo)
 {
-	GLAMOCardInfo *glamoc = glamos->glamoc;
+	GLAMOCardInfo *glamoc = pGlamo->glamoc;
 	char *mmio = glamoc->reg_base;
 	CARD32 offset;
 
@@ -56,8 +56,6 @@ GLAMODebugFifo(GLAMOScreenInfo *glamos)
 void
 GLAMOEngineReset(ScreenPtr pScreen, enum GLAMOEngine engine)
 {
-	KdScreenPriv(pScreen);
-	GLAMOCardInfo(pScreenPriv);
 	CARD32 reg;
 	CARD16 mask;
 	char *mmio = glamoc->reg_base;
