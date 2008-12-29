@@ -33,6 +33,7 @@
 #include "config.h"
 #endif
 
+#include "xf86.h"
 #include "exa.h"
 
 #define GLAMO_REG_BASE(c)		((c)->attr.address[0])
@@ -119,6 +120,7 @@ typedef struct {
 
 #define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
 
+#if 0
 typedef struct _GLAMOScreenInfo {
 
 	GLAMOCardInfo *glamoc;
@@ -145,6 +147,8 @@ typedef struct _GLAMOScreenInfo {
 	MemBuf		*cmd_queue_cache;
 	int		cmd_queue_cache_start;
 } GLAMOScreenInfo;
+
+#endif
 
 typedef union { float f; CARD32 i; } fi_type;
 

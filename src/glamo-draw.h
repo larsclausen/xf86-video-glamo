@@ -1,8 +1,8 @@
 /*
- * Copyright © 2007 OpenMoko, Inc.
+ * Copyright  2007 OpenMoko, Inc.
  *
  * This driver is based on Xati,
- * Copyright © 2004 Eric Anholt
+ * Copyright  2004 Eric Anholt
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -26,7 +26,7 @@
 #ifndef _GLAMO_DRAW_H_
 #define _GLAMO_DRAW_H_
 
-void GLAMOWaitIdle(GLAMOScreenInfo *glamos);
+void GLAMOWaitIdle(GlamoPtr *pGlamo);
 
 #define GLAMO_TRACE_FALL 1
 #define GLAMO_TRACE_DRAW 1
