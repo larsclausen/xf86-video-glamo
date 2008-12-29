@@ -26,28 +26,26 @@
 #define _GLAMO_FUNCS_H_
 
 #ifdef HAVE_CONFIG_H
-#include <kdrive-config.h>
+#include <config.h>
 #endif
 
 #include <assert.h>
-#include "os.h"
-#include "kdrive.h"
 
-void glamoOutReg(ScreenPtr pScreen, unsigned short reg, unsigned short val);
+void glamoOutReg(GlamoPtr pGlamo, unsigned short reg, unsigned short val);
 
-unsigned short glamoInReg(ScreenPtr pScreen, unsigned short reg);
+unsigned short glamoInReg(GlamoPtr pGlamo, unsigned short reg);
 
-void glamoSetBitMask(ScreenPtr pScreen, int reg, int mask, int val);
+void glamoSetBitMask(GlamoPtr pGlamo, int reg, int mask, int val);
 
-void setCmdMode (ScreenPtr pScreen, Bool on);
+void setCmdMode (GlamoPtr pGlamo, Bool on);
 
-Bool glamoRotateLCD (ScreenPtr pScreen, Rotation rotation);
+Bool glamoRotateLCD (GlamoPtr pGlamo, Rotation rotation);
 
 #ifdef XV
 
-void GLAMOISPWaitEngineIdle (ScreenPtr pScreen);
-void GLAMOISPEngineInit (ScreenPtr pScreen);
-void GLAMOISPDisplayYUVPlanarFrame (ScreenPtr pScreen,
+void GLAMOISPWaitEngineIdle (GlamoPtr pGlamo);
+void GLAMOISPEngineInit (GlamoPtr pGlamo);
+void GLAMOISPDisplayYUVPlanarFrame (GlamoPtr pGlamo,
 				    unsigned int y_addr,
 				    unsigned int u_addr,
 				    unsigned int v_addr,
@@ -62,7 +60,7 @@ void GLAMOISPDisplayYUVPlanarFrame (ScreenPtr pScreen,
 				    short scale_w,
 				    short scale_h);
 
-void GLAMOISPSetColorKeyOverlay(ScreenPtr	pScreen,
+void GLAMOISPSetColorKeyOverlay(GlamoPtr	pGlamo,
 				CARD32	start_addr/*addr on 23bits*/,
 				CARD16	x /*12bits*/,
 				CARD16	y /*12bits*/,
@@ -73,7 +71,7 @@ void GLAMOISPSetColorKeyOverlay(ScreenPtr	pScreen,
 				CARD8	green_key /*6bits*/,
 				CARD8	blue_key /*5bits*/);
 
-void GLAMOISPSetColorKeyOverlay2(ScreenPtr	pScreen,
+void GLAMOISPSetColorKeyOverlay2(GlamoPtr	pGlamo,
 				 CARD32	start_addr/*addr on 23bits*/,
 				 CARD16	x /*12bits*/,
 				 CARD16	y /*12bits*/,

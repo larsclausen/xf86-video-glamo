@@ -36,62 +36,58 @@
 	(*((volatile unsigned short *) ((glamo_mmio) + (reg))))
 
 void
-GLAMOOutReg(ScreenPtr pScreen, unsigned short reg, unsigned short val)
+GLAMOOutReg(GlamoPtr pGlamo, unsigned short reg, unsigned short val)
 {
-	KdScreenPriv(pScreen);
-	GLAMOCardInfo(pScreenPriv);
 	GLAMO_LOG("mark: pScreen:%#x, reg:%#x, val:%#x, reg_base:%#x\n",
-		  pScreen, reg, val, glamoc->reg_base);
-	if (!glamoc->reg_base) {
+		  pGlamo, reg, val, pGlamo->reg_base);
+	if (!pGlamo->reg_base) {
 		GLAMO_LOG_ERROR("got null glamoc->reg_base\n");
 		return;
 	}
-	GLAMO_OUT_REG(glamoc->reg_base, reg, val);
+	GLAMO_OUT_REG(pGlamo->reg_base, reg, val);
 }
 
 unsigned short
-GLAMOInReg(ScreenPtr pScreen, unsigned short reg)
+GLAMOInReg(GlamoPtr pGlamo, unsigned short reg)
 {
-	KdScreenPriv(pScreen);
-	GLAMOCardInfo(pScreenPriv);
 	GLAMO_LOG("mark: pScreen:%#x, reg:%#x, reg_base:%#x\n",
-		  pScreen, reg, glamoc->reg_base);
-	if (!glamoc->reg_base) {
+		  pGlamo, reg, pGlamo->reg_base);
+	if (!pGlamo->reg_base) {
 		GLAMO_LOG_ERROR("got null glamoc->reg_base\n");
 		return 0;
 	}
-	return GLAMO_IN_REG(glamoc->reg_base, reg);
+	return GLAMO_IN_REG(pGlamo->reg_base, reg);
 }
 
 void
-GLAMOSetBitMask(ScreenPtr pScreen, int reg, int mask, int val)
+GLAMOSetBitMask(GlamoPtr pGlamo, int reg, int mask, int val)
 {
 	int old;
-	old = GLAMOInReg(pScreen, reg);
+	old = GLAMOInReg(pGlamo, reg);
 	old &= ~mask;
 	old |= val & mask;
 	GLAMO_LOG("mark\n");
-	GLAMOOutReg(pScreen, reg, old);
+	GLAMOOutReg(pGlamo, reg, old);
 }
 
 void
-setCmdMode (ScreenPtr pScreen, Bool on)
+setCmdMode (GlamoPtr pGlamo, Bool on)
 {
 	if (on) {
 		GLAMO_LOG("mark\n");
 		/*TODO: busy waiting is bad*/
-		while (!GLAMOInReg(pScreen, GLAMO_REG_LCD_STATUS1)
+		while (!GLAMOInReg(pGlamo, GLAMO_REG_LCD_STATUS1)
 		       & (1 << 15)) {
 			GLAMO_LOG("mark\n");
 			usleep(1 * 1000);
 		}
 		GLAMO_LOG("mark\n");
-		GLAMOOutReg(pScreen,
+		GLAMOOutReg(pGlamo,
 			    GLAMO_REG_LCD_COMMAND1,
 			    GLAMO_LCD_CMD_TYPE_DISP |
 			    GLAMO_LCD_CMD_DATA_FIRE_VSYNC);
 		GLAMO_LOG("mark\n");
-		while (!GLAMOInReg(pScreen, GLAMO_REG_LCD_STATUS2)
+		while (!GLAMOInReg(pGlamo, GLAMO_REG_LCD_STATUS2)
 		       & (1 << 12)) {
 			GLAMO_LOG("mark\n");
 			usleep(1 * 1000);
@@ -101,12 +97,12 @@ setCmdMode (ScreenPtr pScreen, Bool on)
 		usleep(100 * 1000);
 	} else {
 		GLAMO_LOG("mark\n");
-		GLAMOOutReg(pScreen,
+		GLAMOOutReg(pGlamo,
 			    GLAMO_REG_LCD_COMMAND1,
 			    GLAMO_LCD_CMD_TYPE_DISP |
 			    GLAMO_LCD_CMD_DATA_DISP_SYNC);
 		GLAMO_LOG("mark\n");
-		GLAMOOutReg(pScreen,
+		GLAMOOutReg(pGlamo,
 			    GLAMO_REG_LCD_COMMAND1,
 			    GLAMO_LCD_CMD_TYPE_DISP |
 			    GLAMO_LCD_CMD_DATA_DISP_FIRE);
@@ -117,7 +113,7 @@ setCmdMode (ScreenPtr pScreen, Bool on)
 static int engine_status[NB_GLAMO_ENGINES];
 
 void
-GLAMOResetEngine(ScreenPtr pScreen, enum GLAMOEngine engine)
+GLAMOResetEngine(GlamoPtr pGlamo, enum GLAMOEngine engine)
 {
 	int reg, mask;
 
@@ -134,7 +130,7 @@ GLAMOResetEngine(ScreenPtr pScreen, enum GLAMOEngine engine)
 		case GLAMO_ENGINE_ISP:
 			reg = GLAMO_REG_CLOCK_ISP;
 			mask = GLAMO_CLOCK_ISP2_RESET;
-			break; 
+			break;
 		case GLAMO_ENGINE_CMDQ:
 			reg = GLAMO_REG_CLOCK_2D;
 			mask = GLAMO_CLOCK_2D_CMDQ_RESET;
@@ -145,29 +141,29 @@ GLAMOResetEngine(ScreenPtr pScreen, enum GLAMOEngine engine)
 			break;
 	}
 
-	GLAMOSetBitMask(pScreen, reg, mask, 0xffff);
+	GLAMOSetBitMask(pGlamo, reg, mask, 0xffff);
 	usleep(1000);
-	GLAMOSetBitMask(pScreen, reg, mask, 0);
+	GLAMOSetBitMask(pGlamo, reg, mask, 0);
 	usleep(1000);
 
 	GLAMO_LOG("leave\n");
 }
 
 void
-GLAMOEnableEngine(ScreenPtr pScreen, enum GLAMOEngine engine)
+GLAMOEnableEngine(GlamoPtr pGlamo, enum GLAMOEngine engine)
 {
 	GLAMO_LOG("enter\n");
 	if (engine_status[engine] & STATUS_ENABLED)
 		return;
 
-	GLAMOSetBitMask(pScreen,
+	GLAMOSetBitMask(pGlamo,
 			GLAMO_REG_CLOCK_GEN5_1,
 			GLAMO_CLOCK_GEN51_EN_DIV_MCLK,
 			0xffff);
 
 	switch (engine) {
 		case GLAMO_ENGINE_MPEG:
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_MPEG,
 					GLAMO_CLOCK_MPEG_EN_X6CLK |
 					GLAMO_CLOCK_MPEG_DG_X6CLK |
@@ -178,66 +174,66 @@ GLAMOEnableEngine(ScreenPtr pScreen, enum GLAMOEngine engine)
 					GLAMO_CLOCK_MPEG_EN_X0CLK |
 					GLAMO_CLOCK_MPEG_DG_X0CLK,
 					0xffff & ~GLAMO_CLOCK_MPEG_DG_X0CLK);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_MPROC,
 					GLAMO_CLOCK_MPROC_EN_M4CLK,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_GEN5_1,
 					GLAMO_CLOCK_GEN51_EN_DIV_JCLK,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_MPEG |
 					GLAMO_HOSTBUS2_MMIO_EN_MICROP1,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_MPROC,
 					GLAMO_CLOCK_MPROC_EN_KCLK,
 					0xffff);
 			break;
 		case GLAMO_ENGINE_ISP:
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_ISP,
 					GLAMO_CLOCK_ISP_EN_M2CLK |
 					GLAMO_CLOCK_ISP_EN_I1CLK,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_GEN5_2,
 					GLAMO_CLOCK_GEN52_EN_DIV_ICLK,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_GEN5_1,
 					GLAMO_CLOCK_GEN51_EN_DIV_JCLK,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_ISP,
 					0xffff);
 			break;
 		case GLAMO_ENGINE_CMDQ:
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_2D,
 					GLAMO_CLOCK_2D_EN_M6CLK,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_CMDQ,
 					0xffff);
 			break;
 		case GLAMO_ENGINE_2D:
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_2D,
 					GLAMO_CLOCK_2D_EN_M7CLK |
 					GLAMO_CLOCK_2D_EN_GCLK |
 					GLAMO_CLOCK_2D_DG_M7CLK |
 					GLAMO_CLOCK_2D_DG_GCLK,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_2D,
 					0xffff);
-			GLAMOSetBitMask(pScreen,
+			GLAMOSetBitMask(pGlamo,
 					GLAMO_REG_CLOCK_GEN5_1,
 					GLAMO_CLOCK_GEN51_EN_DIV_GCLK,
 					0xffff);
@@ -251,11 +247,11 @@ GLAMOEnableEngine(ScreenPtr pScreen, enum GLAMOEngine engine)
 
 #ifdef XV
 void
-GLAMOISPWaitEngineIdle (ScreenPtr pScreen)
+GLAMOISPWaitEngineIdle (GlamoPtr pGlamo)
 {
 	GLAMO_LOG("enter\n");
 	while (1) {
-		int val = GLAMOInReg(pScreen, GLAMO_REG_ISP_STATUS);
+		int val = GLAMOInReg(pGlamo, GLAMO_REG_ISP_STATUS);
 		if (val & 0x1) {
 			usleep(1 * 1000);
 			GLAMO_LOG("isp busy\n");
@@ -267,10 +263,8 @@ GLAMOISPWaitEngineIdle (ScreenPtr pScreen)
 }
 
 static void
-SetOnFlyLUTRegs(ScreenPtr pScreen)
+SetOnFlyLUTRegs(GlamoPtr pGlamo)
 {
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
 	struct {
 		int src_block_x;
 		int src_block_y;
@@ -314,10 +308,8 @@ SetOnFlyLUTRegs(ScreenPtr pScreen)
 }
 
 static void
-SetScalingWeightMatrixRegs(ScreenPtr pScreen)
+SetScalingWeightMatrixRegs(GlamoPtr pGlamo)
 {
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
 	int left = 1 << 14;
 	RING_LOCALS;
 
@@ -356,10 +348,8 @@ SetScalingWeightMatrixRegs(ScreenPtr pScreen)
 }
 
 static void
-GLAMOISPYuvRgbPipelineInit(ScreenPtr pScreen)
+GLAMOISPYuvRgbPipelineInit(GlamoPtr pGlamo)
 {
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
 	unsigned short en3;
 	RING_LOCALS;
 
@@ -403,29 +393,29 @@ GLAMOISPYuvRgbPipelineInit(ScreenPtr pScreen)
 
 	END_CMDQ();
 
-	SetOnFlyLUTRegs(pScreen);
-	SetScalingWeightMatrixRegs(pScreen);
+	SetOnFlyLUTRegs(pGlamo);
+	SetScalingWeightMatrixRegs(pGlamo);
 
 	GLAMO_LOG("leave\n");
 }
 
 static void
-GLAMOISPColorKeyOverlayInit(ScreenPtr pScreen)
+GLAMOISPColorKeyOverlayInit(GlamoPtr pGlamo)
 {
-	GLAMO_RETURN_IF_FAIL (pScreen);
+	GLAMO_RETURN_IF_FAIL (pGlamo);
 
 	/*GLAMOSetBitMask(pScreen,
 			GLAMO_REG_ISP_EN2,
 			GLAMO_ISP_EN2_OVERLAY,
 			0x0001);*/
-	GLAMOSetBitMask(pScreen,
+	GLAMOSetBitMask(pGlamo,
 			GLAMO_REG_ISP_EN4,
 			GLAMO_ISP_EN4_OVERLAY|GLAMO_ISP_EN4_LCD_OVERLAY,
 			0x0003);
 }
 
 void
-GLAMOISPSetColorKeyOverlay(ScreenPtr	pScreen,
+GLAMOISPSetColorKeyOverlay(ScreenPtr	pGlamo,
 			   CARD32	start_addr/*addr on 23bits*/,
 			   CARD16	x /*12bits*/,
 			   CARD16	y /*12bits*/,
@@ -437,8 +427,6 @@ GLAMOISPSetColorKeyOverlay(ScreenPtr	pScreen,
 			   CARD8	blue_key /*5bits*/)
 {
 	unsigned short green_red_keys = 0;
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
 	RING_LOCALS;
 
 	GLAMO_LOG("enter. start_addr:%#x, (x,y):(%hd,%hd), "
@@ -470,7 +458,7 @@ GLAMOISPSetColorKeyOverlay(ScreenPtr	pScreen,
 }
 
 void
-GLAMOISPSetColorKeyOverlay2(ScreenPtr	pScreen,
+GLAMOISPSetColorKeyOverlay2(GlamoPtr	pGlamo,
 			    CARD32	start_addr/*addr on 23bits*/,
 			    CARD16	x /*12bits*/,
 			    CARD16	y /*12bits*/,
@@ -485,33 +473,33 @@ GLAMOISPSetColorKeyOverlay2(ScreenPtr	pScreen,
 	red = (color_key >> 11);
 	green = (color_key >> 5) & 0x003f;
 	blue = (color_key) & 0x001f;
-	GLAMOISPSetColorKeyOverlay(pScreen, start_addr, x, y,
+	GLAMOISPSetColorKeyOverlay(pGlamo, start_addr, x, y,
 				   width, height, pitch,
 				   red, green, blue);
 }
 
 void
-GLAMOISPEngineInit (ScreenPtr pScreen)
+GLAMOISPEngineInit (GlamoPtr pGlamo)
 {
 	static Bool isp_enabled, isp_reset;
 
 	GLAMO_LOG("enter\n");
 	if (!isp_enabled) {
-		GLAMOEnableEngine(pScreen, GLAMO_ENGINE_ISP);
+		GLAMOEnableEngine(pGlamo, GLAMO_ENGINE_ISP);
 		isp_enabled = TRUE;
 		GLAMO_LOG("enabled ISP\n");
 	}
 	if (!isp_reset) {
-		GLAMOResetEngine(pScreen, GLAMO_ENGINE_ISP);
+		GLAMOResetEngine(pGlamo, GLAMO_ENGINE_ISP);
 		GLAMO_LOG("reset ISP\n");
 	}
-	GLAMOISPYuvRgbPipelineInit(pScreen);
+	GLAMOISPYuvRgbPipelineInit(pGlamo);
 	/*GLAMOISPColorKeyOverlayInit(pScreen);*/
 	GLAMO_LOG("leave\n");
 }
 
 void
-GLAMOISPDisplayYUVPlanarFrame (ScreenPtr pScreen,
+GLAMOISPDisplayYUVPlanarFrame (GlamoPtr pGlamo,
 			       unsigned int y_addr,
 			       unsigned int u_addr,
 			       unsigned int v_addr,
@@ -526,8 +514,6 @@ GLAMOISPDisplayYUVPlanarFrame (ScreenPtr pScreen,
 			       short scale_w,
 			       short scale_h)
 {
-	KdScreenPriv(pScreen);
-	GLAMOScreenInfo(pScreenPriv);
 	int en3;
 	RING_LOCALS;
 
@@ -590,8 +576,7 @@ GLAMOISPDisplayYUVPlanarFrame (ScreenPtr pScreen,
 
 	END_CMDQ();
 
-        GLAMOEngineWait(pScreen, GLAMO_ENGINE_ALL);
-
+	GLAMOEngineWait(pGlamo, GLAMO_ENGINE_ALL);
 
 	GLAMO_LOG("leave\n");
 
