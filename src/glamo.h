@@ -107,6 +107,14 @@ typedef struct {
 	CARD32 settings;
 	CARD32 foreground;
 
+	ExaOffscreenArea *exa_cmd_queue;
+
+	/* What was GLAMOCardInfo */
+	char *reg_base;
+	Bool is_3362;
+	CARD32 crtc_pitch;
+	CARD32 crtc2_pitch;
+
 } GlamoRec, *GlamoPtr;
 
 #define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
