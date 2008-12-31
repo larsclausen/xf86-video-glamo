@@ -32,6 +32,5 @@ glamo_drv_la_SOURCES = \
          glamo.c \
          glamo-cmdq.c \
          glamo-funcs.c \
-         glamo-draw.c \
-         glamo-stub.c
+         glamo-draw.c
 

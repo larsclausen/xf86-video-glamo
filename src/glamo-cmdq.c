@@ -31,10 +31,10 @@
 #include "glamo-cmdq.h"
 #include "glamo-draw.h"
 
-static void GLAMOCMDQResetCP(ScreenPtr pScreen);
+static void GLAMOCMDQResetCP(GlamoPtr pGlamo);
 #ifndef NDEBUG
 static void
-GLAMODebugFifo(GlamoPtr *pGlamo)
+GLAMODebugFifo(GlamoPtr pGlamo)
 {
 	GLAMOCardInfo *glamoc = pGlamo->glamoc;
 	char *mmio = glamoc->reg_base;
@@ -58,7 +58,7 @@ GLAMOEngineReset(GlamoPtr pGlamo, enum GLAMOEngine engine)
 {
 	CARD32 reg;
 	CARD16 mask;
-	char *mmio = pGLamo->reg_base;
+	char *mmio = pGlamo->reg_base;
 
 	if (!mmio)
 		return;
@@ -205,7 +205,7 @@ GLAMOEngineBusy(GlamoPtr pGlamo, enum GLAMOEngine engine)
 		return FALSE;
 
 	if (pGlamo->cmd_queue_cache != NULL)
-		GLAMOFlushCMDQCache(glamos, 0);
+		GLAMOFlushCMDQCache(pGlamo, 0);
 
 	switch (engine)
 	{
@@ -278,9 +278,10 @@ GLAMOEngineWaitReal(GlamoPtr pGlamo,
 		GLAMO_LOG_ERROR("Timeout idling accelerator "
 				"(0x%x), resetting...\n",
 				status);
-		GLAMODumpRegs(glamos, 0x1600, 0x1612);
-		GLAMOEngineReset(glamos->screen->pScreen, GLAMO_ENGINE_CMDQ);
-		GLAMODrawSetup(glamos->screen->pScreen);
+		GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
+		GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
+		GLAMOEngineEnable(pGlamo, GLAMO_ENGINE_2D);
+        GLAMOEngineReset(pGlamo, GLAMO_ENGINE_2D);
 	}
 }
 
@@ -292,7 +293,7 @@ GLAMOEngineWait(GlamoPtr pGlamo,
 }
 
 MemBuf *
-GLAMOCreateCMDQCache(GlamoPtr *pGlamo)
+GLAMOCreateCMDQCache(GlamoPtr pGlamo)
 {
 	MemBuf *buf;
 
@@ -313,7 +314,7 @@ GLAMOCreateCMDQCache(GlamoPtr *pGlamo)
 }
 
 static void
-GLAMODispatchCMDQCache(GlamoPtr *pGlamo)
+GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 {
 	MemBuf *buf = pGlamo->cmd_queue_cache;
 	char *mmio = pGlamo->reg_base;
@@ -326,18 +327,18 @@ GLAMODispatchCMDQCache(GlamoPtr *pGlamo)
 	ring_count = pGlamo->ring_len / 2;
 	if (count + pGlamo->ring_write >= ring_count) {
 		GLAMOCMDQResetCP(pGlamo);
-		glamos->ring_write = 0;
+		pGlamo->ring_write = 0;
 	}
 
 	WHILE_NOT_TIMEOUT(.5) {
 		if (count <= 0)
 			break;
 
-		pGlamo->ring_addr[glamos->ring_write] = *addr;
+		pGlamo->ring_addr[pGlamo->ring_write] = *addr;
 		pGlamo->ring_write++; addr++;
 		if (pGlamo->ring_write >= ring_count) {
 			GLAMO_LOG_ERROR("wrapped over ring_write\n");
-			GLAMODumpRegs(glamos, 0x1600, 0x1612);
+			GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
 			pGlamo->ring_write = 0;
 		}
 		count--;
@@ -351,10 +352,10 @@ GLAMODispatchCMDQCache(GlamoPtr *pGlamo)
 	}
 
 	MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRH,
-			 (pGLamo->ring_write >> 15) & 0x7);
+			 (pGlamo->ring_write >> 15) & 0x7);
 	MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRL,
 			 (pGlamo->ring_write <<  1) & 0xffff);
-	GLAMOEngineWaitReal(pGlamo->screen->pScreen,
+	GLAMOEngineWaitReal(pGlamo,
 			    GLAMO_ENGINE_CMDQ, FALSE);
 }
 
@@ -380,7 +381,7 @@ GLAMOCMDQResetCP(GlamoPtr pGlamo)
 	CARD32 queue_offset = 0;
 
 	/* make the decoder happy? */
-	memset((char*)pGlamo->ring_addr, 0, glamos->ring_len+2);
+	memset((char*)pGlamo->ring_addr, 0, pGlamo->ring_len+2);
 
 	GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
 
@@ -410,23 +411,23 @@ GLAMOCMDQInit(GlamoPtr pGlamo,
 	char *mmio = pGlamo->reg_base;
 	int cq_len = CQ_LEN;
 
-	if (!force && glamos->exa_cmd_queue)
+	if (!force && pGlamo->exa_cmd_queue)
 		return TRUE;
 
 	pGlamo->ring_len = (cq_len + 1) * 1024;
 
 	pGlamo->exa_cmd_queue =
-		exaOffscreenAlloc(pGlamo, glamos->ring_len + 4,
-				  pGlamo->exa.pixmapOffsetAlign,
+		exaOffscreenAlloc(pGlamo->pScreen, pGlamo->ring_len + 4,
+				  pGlamo->exa->pixmapOffsetAlign,
 				  TRUE, NULL, NULL);
 	if (!pGlamo->exa_cmd_queue)
 		return FALSE;
 	pGlamo->ring_addr =
-		(CARD16 *) (pScreenPriv->screen->memory_base +
+		(CARD16 *) (pGlamo->fbstart +
 				pGlamo->exa_cmd_queue->offset);
 
 	GLAMOEngineEnable(pGlamo, GLAMO_ENGINE_CMDQ);
-	GLAMOCMDQResetCP(pGlamo->screen->pScreen);
+	GLAMOCMDQResetCP(pGlamo);
 	return TRUE;
 }
 

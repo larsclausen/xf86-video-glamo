@@ -121,16 +121,16 @@ tv_le(struct timeval *tv1, struct timeval *tv2)
 #define TIMEDOUT()	(!tv_le(&_curtime, &_target))
 
 MemBuf *
-GLAMOCreateCMDQCache(GlamoPtr *pGlamo);
+GLAMOCreateCMDQCache(GlamoPtr pGlamo);
 
 void
-GLAMOFlushCMDQCache(GlamoPtr *pGlamo, Bool discard);
+GLAMOFlushCMDQCache(GlamoPtr pGlamo, Bool discard);
 
 void
-GLAMOCMDQCacheSetup(ScreenPtr pScreen);
+GLAMOCMDQCacheSetup(GlamoPtr pGlamo);
 
 void
-GLAMOCMQCacheTeardown(ScreenPtr pScreen);
+GLAMOCMQCacheTeardown(GlamoPtr pGlamo);
 
 enum GLAMOEngine {
 	GLAMO_ENGINE_CMDQ,
@@ -142,19 +142,19 @@ enum GLAMOEngine {
 };
 
 void
-GLAMOEngineEnable(ScreenPtr pScreen, enum GLAMOEngine engine);
+GLAMOEngineEnable(GlamoPtr pGlamo, enum GLAMOEngine engine);
 
 void
-GLAMOEngineDisable(ScreenPtr pScreen, enum GLAMOEngine engine);
+GLAMOEngineDisable(GlamoPtr pGlamo, enum GLAMOEngine engine);
 
 void
-GLAMOEngineReset(ScreenPtr pScreen, enum GLAMOEngine engine);
+GLAMOEngineReset(GlamoPtr pGlamo, enum GLAMOEngine engine);
 
 int
-GLAMOEngineBusy(ScreenPtr pScreen, enum GLAMOEngine engine);
+GLAMOEngineBusy(GlamoPtr pGlamo, enum GLAMOEngine engine);
 
 void
-GLAMOEngineWait(ScreenPtr pScreen, enum GLAMOEngine engine);
+GLAMOEngineWait(GlamoPtr pGlamo, enum GLAMOEngine engine);
 
 #endif /* _GLAMO_DMA_H_ */
 

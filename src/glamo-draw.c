@@ -24,7 +24,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#include <kdrive-config.h>
+#include <config.h>
 #endif
 #include "glamo-log.h"
 #include "glamo.h"
@@ -157,10 +157,23 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 void
 GLAMOExaWaitMarker (ScreenPtr pScreen, int marker);
 
+static void
+GLAMOBlockHandler(pointer blockData, OSTimePtr timeout, pointer readmask)
+{
+	ScreenPtr pScreen = (ScreenPtr) blockData;
+
+	exaWaitSync(pScreen);
+}
+
+static void
+GLAMOWakeupHandler(pointer blockData, int result, pointer readmask)
+{
+}
+
 Bool
 GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 {
-	GlamoPtr pGlamo = GlamoPTR(pScrn)
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
 	int offscreen_memory_size = 0;
 	Bool success = FALSE;
@@ -170,10 +183,11 @@ GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 
 	exa = pGlamo->exa = exaDriverAlloc();
     if(!exa) return FALSE;
-	
-	exa->memoryBase = pGlamo->memory_base;
-	exa->memorySize = pGlamo->memory_size;
-	exa->offScreenBase = pGlamo->off_screen_base;
+
+	exa->memoryBase = pGlamo->fbstart;
+	exa->memorySize = 1024 * 1024 * 8;
+	/*exa->offScreenBase = pGlamo->fboff;*/
+	exa->offScreenBase = pScrn->virtualX * pScrn->virtualY * 2;
 
 	exa->exa_major = 2;
 	exa->exa_minor = 0;
@@ -210,8 +224,6 @@ GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 				       GLAMOWakeupHandler,
 				       pScreen);
 
-	glamoExaScreenPrivateIndex = AllocateScreenPrivateIndex() ;
-	pScreen->devPrivates[glamoExaScreenPrivateIndex].ptr = glamos;
 	success = exaDriverInit(pScreen, exa);
 	if (success) {
 		ErrorF("Initialized EXA acceleration\n");
@@ -229,9 +241,9 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 		     Pixel          pm,
 		     Pixel          fg)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
-	
+	ScrnInfoPtr pScrn = xf86Screens[pPix->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
+
 	CARD32 offset, pitch;
 	FbBits mask;
 	RING_LOCALS;
@@ -266,8 +278,8 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 void
 GLAMOExaSolid(PixmapPtr pPix, int x1, int y1, int x2, int y2)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
+	ScrnInfoPtr pScrn = xf86Screens[pPix->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
 	GLAMO_LOG("enter\n");
 
@@ -288,12 +300,12 @@ GLAMOExaSolid(PixmapPtr pPix, int x1, int y1, int x2, int y2)
 void
 GLAMOExaDoneSolid(PixmapPtr pPix)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
+	ScrnInfoPtr pScrn = xf86Screens[pPix->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
-	exaWaitSync(glamos->screen->pScreen);
+	exaWaitSync(pGlamo->pScreen);
 	if (pGlamo->cmd_queue_cache)
-		GLAMOFlushCMDQCache(glamos, 1);
+		GLAMOFlushCMDQCache(pGlamo, 1);
 }
 
 Bool
@@ -304,8 +316,8 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 		    int             alu,
 		    Pixel           pm)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
+	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
 	CARD32 src_offset, src_pitch;
 	CARD32 dst_offset, dst_pitch;
@@ -335,7 +347,7 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 		  pGlamo->src_pitch,
 		  pGlamo->dst_offset,
 		  pGlamo->dst_pitch,
-		  pScreenPriv->screen->memory_base);
+		  pGlamo->fbstart);
 
 	pGlamo->settings = GLAMOBltRop[alu] << 8;
 	exaMarkSync(pDst->drawable.pScreen);
@@ -352,8 +364,8 @@ GLAMOExaCopy(PixmapPtr       pDst,
 	      int    width,
 	      int    height)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
+	ScrnInfoPtr pScrn = xf86Screens[pDst->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
 	RING_LOCALS;
 
@@ -390,11 +402,11 @@ GLAMOExaCopy(PixmapPtr       pDst,
 void
 GLAMOExaDoneCopy(PixmapPtr pDst)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
+	ScrnInfoPtr pScrn = xf86Screens[pDst->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
 	GLAMO_LOG("enter\n");
-	exaWaitSync(pGlamo->screen->pScreen);
+	exaWaitSync(pGlamo->pScreen);
 	if (pGlamo->cmd_queue_cache)
 		GLAMOFlushCMDQCache(pGlamo, 1);
 	GLAMO_LOG("leave\n");
@@ -448,9 +460,9 @@ GLAMOExaUploadToScreen(PixmapPtr pDst,
 		       char *src,
 		       int src_pitch)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
-	
+	ScrnInfoPtr pScrn = xf86Screens[pDst->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
+
 	int bpp, i;
 	CARD8 *dst_offset;
 	int dst_pitch;
@@ -458,7 +470,7 @@ GLAMOExaUploadToScreen(PixmapPtr pDst,
 	GLAMO_LOG("enter\n");
 	bpp = pDst->drawable.bitsPerPixel / 8;
 	dst_pitch = pDst->devKind;
-	dst_offset = pGlamo->exa.memoryBase + exaGetPixmapOffset(pDst)
+	dst_offset = pGlamo->exa->memoryBase + exaGetPixmapOffset(pDst)
 						+ x*bpp + y*dst_pitch;
 
 	GLAMO_LOG("dst_pitch:%d, src_pitch\n", dst_pitch, src_pitch);
@@ -478,8 +490,8 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 			   char *dst,
 			   int dst_pitch)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
+	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
 	int bpp, i;
 	CARD8 *dst_offset, *src;
@@ -489,7 +501,7 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 	bpp = pSrc->drawable.bitsPerPixel;
 	bpp /= 8;
 	src_pitch = pSrc->devKind;
-	src = pGlamo->exa.memoryBase + exaGetPixmapOffset(pSrc) +
+	src = pGlamo->exa->memoryBase + exaGetPixmapOffset(pSrc) +
 						x*bpp + y*src_pitch;
 	dst_offset = dst ;
 
@@ -506,9 +518,6 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 void
 GLAMOExaWaitMarker (ScreenPtr pScreen, int marker)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pPixmap->drawable.pScreen->myNum];
-	GlamoPtr pGlamo = GLAMOPTR(pScrn);
-
 	GLAMO_LOG("enter\n");
 	GLAMOEngineWait(pScreen, GLAMO_ENGINE_ALL);
 	GLAMO_LOG("leave\n");

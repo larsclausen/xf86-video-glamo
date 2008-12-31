@@ -353,7 +353,7 @@ GLAMOISPYuvRgbPipelineInit(GlamoPtr pGlamo)
 	unsigned short en3;
 	RING_LOCALS;
 
-	GLAMO_LOG("enter.glamos:%#x\n", glamos);
+	GLAMO_LOG("enter.glamos:%#x\n", pGlamo);
 
 	BEGIN_CMDQ(18);
 
@@ -415,7 +415,7 @@ GLAMOISPColorKeyOverlayInit(GlamoPtr pGlamo)
 }
 
 void
-GLAMOISPSetColorKeyOverlay(ScreenPtr	pGlamo,
+GLAMOISPSetColorKeyOverlay(GlamoPtr	pGlamo,
 			   CARD32	start_addr/*addr on 23bits*/,
 			   CARD16	x /*12bits*/,
 			   CARD16	y /*12bits*/,

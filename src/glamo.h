@@ -85,19 +85,21 @@ typedef struct _MemBuf {
 typedef struct {
 	unsigned char*			fbstart;
 	unsigned char*			fbmem;
-	int				fboff;
-	int				lineLength;
-	int				rotate;
-	Bool				shadowFB;
-	void				*shadow;
+	int						fboff;
+	int						lineLength;
+	int						rotate;
+	Bool					shadowFB;
+	void					*shadow;
 	CloseScreenProcPtr		CloseScreen;
 	CreateScreenResourcesProcPtr	CreateScreenResources;
-	void				(*PointerMoved)(int index, int x, int y);
+	void					(*PointerMoved)(int index, int x, int y);
 	EntityInfoPtr			pEnt;
 	/* DGA info */
-	DGAModePtr			pDGAMode;
-	int				nDGAMode;
+	DGAModePtr				pDGAMode;
+	int						nDGAMode;
 	OptionInfoPtr			Options;
+
+	ScreenPtr 				pScreen;
 
 	PixmapPtr srcPixmap;
 	PixmapPtr dstPixmap;
@@ -108,7 +110,21 @@ typedef struct {
 	CARD32 settings;
 	CARD32 foreground;
 
+	ExaDriverPtr exa;
 	ExaOffscreenArea *exa_cmd_queue;
+
+	CARD16		*ring_addr;	/* Beginning of ring buffer. */
+	int		ring_write;	/* Index of write ptr in ring. */
+	int		ring_read;	/* Index of read ptr in ring. */
+	int		ring_len;
+
+	/*
+	 * cmd queue cache in system memory
+	 * It is to be flushed to cmd_queue_space
+	 * "at once", when we are happy with it.
+	 */
+	MemBuf		*cmd_queue_cache;
+	int		cmd_queue_cache_start;
 
 	/* What was GLAMOCardInfo */
 	char *reg_base;
@@ -178,6 +194,7 @@ MMIOSetBitMask(char *mmio, CARD32 reg, CARD16 mask, CARD16 val)
 	MMIO_OUT16(mmio, reg, tmp);
 }
 
+#if 0
 /* glamo.c */
 Bool
 GLAMOMapReg(KdCardInfo *card, GLAMOCardInfo *glamoc);
@@ -190,10 +207,9 @@ GLAMODumpRegs(GLAMOScreenInfo *glamos,
 	      CARD16 from,
 	      CARD16 to);
 
-/* glamo_draw.c */
-void
-GLAMODrawSetup(ScreenPtr pScreen);
+#endif
 
+/* glamo_draw.c */
 Bool
 GLAMODrawInit(ScreenPtr pScreen);
 
@@ -211,7 +227,5 @@ GLAMORecolorCursor(ScreenPtr pScreen, int ndef, xColorItem *pdef);
 
 int
 GLAMOLog2(int val);
-
-extern KdCardFuncs GLAMOFuncs;
 
 #endif /* _GLAMO_H_ */
