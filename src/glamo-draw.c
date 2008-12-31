@@ -181,6 +181,9 @@ GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 
 	GLAMO_LOG("enter\n");
 
+	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+			"EXA hardware acceleration initialising\n");
+
 	exa = pGlamo->exa = exaDriverAlloc();
     if(!exa) return FALSE;
 

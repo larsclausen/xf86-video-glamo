@@ -240,7 +240,7 @@ GlamoGetRec(ScrnInfoPtr pScrn)
 {
 	if (pScrn->driverPrivate != NULL)
 		return TRUE;
-	
+
 	pScrn->driverPrivate = xnfcalloc(sizeof(GlamoRec), 1);
 	return TRUE;
 }
@@ -277,7 +277,7 @@ static Bool GlamoPciProbe(DriverPtr drv, int entity_num,
 
     if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	return FALSE;
-	    
+
     xf86LoaderReqSymLists(fbdevHWSymbols, NULL);
 
     pScrn = xf86ConfigPciEntity(NULL, 0, entity_num, NULL, NULL,
@@ -302,7 +302,7 @@ static Bool GlamoPciProbe(DriverPtr drv, int entity_num,
 	    pScrn->ValidMode     = fbdevHWValidModeWeak();
 
 	    xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
-		       "claimed PCI slot %d@%d:%d:%d\n", 
+		       "claimed PCI slot %d@%d:%d:%d\n",
 		       dev->bus, dev->domain, dev->dev, dev->func);
 	    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 		       "using %s\n", device ? device : "default device");
@@ -334,14 +334,14 @@ GlamoProbe(DriverPtr drv, int flags)
 	if (flags & PROBE_DETECT)
 		return FALSE;
 
-	if ((numDevSections = xf86MatchDevice(GLAMO_DRIVER_NAME, &devSections)) <= 0) 
+	if ((numDevSections = xf86MatchDevice(GLAMO_DRIVER_NAME, &devSections)) <= 0)
 	    return FALSE;
-	
+
 	if (!xf86LoadDrvSubModule(drv, "fbdevhw"))
 	    return FALSE;
-	    
+
 	xf86LoaderReqSymLists(fbdevHWSymbols, NULL);
-	
+
 	for (i = 0; i < numDevSections; i++) {
 	    Bool isIsa = FALSE;
 #ifndef XSERVER_LIBPCIACCESS
@@ -360,7 +360,7 @@ GlamoProbe(DriverPtr drv, int flags)
 #endif
 		if (xf86ParseIsaBusString(devSections[i]->busID))
 		    isIsa = TRUE;
-		  
+
 	    }
 	    if (fbdevHWProbe(NULL,dev,NULL)) {
 		pScrn = NULL;
@@ -368,7 +368,7 @@ GlamoProbe(DriverPtr drv, int flags)
 		if (isPci) {
 		    /* XXX what about when there's no busID set? */
 		    int entity;
-		    
+
 		    entity = xf86ClaimPciSlot(bus,device,func,drv,
 					      0,devSections[i],
 					      TRUE);
@@ -385,7 +385,7 @@ GlamoProbe(DriverPtr drv, int flags)
 #endif
 		if (isIsa) {
 		    int entity;
-		    
+
 		    entity = xf86ClaimIsaSlot(drv, 0,
 					      devSections[i], TRUE);
 		    pScrn = xf86ConfigIsaEntity(pScrn,0,entity,
@@ -398,11 +398,11 @@ GlamoProbe(DriverPtr drv, int flags)
 					      devSections[i], TRUE);
 		    pScrn = xf86ConfigFbEntity(pScrn,0,entity,
 					       NULL,NULL,NULL,NULL);
-		   
+
 		}
 		if (pScrn) {
 		    foundScreen = TRUE;
-		    
+
 		    pScrn->driverVersion = GLAMO_VERSION;
 		    pScrn->driverName    = GLAMO_DRIVER_NAME;
 		    pScrn->name          = GLAMO_NAME;
@@ -414,7 +414,7 @@ GlamoProbe(DriverPtr drv, int flags)
 		    pScrn->EnterVT       = fbdevHWEnterVTWeak();
 		    pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
 		    pScrn->ValidMode     = fbdevHWValidModeWeak();
-		    
+
 		    xf86DrvMsg(pScrn->scrnIndex, X_INFO,
 			       "using %s\n", dev ? dev : "default device");
 		}
@@ -562,7 +562,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "checking modes against monitor...\n");
 	{
 		DisplayModePtr mode, first = mode = pScrn->modes;
-		
+
 		if (mode != NULL) do {
 			mode->status = xf86CheckModeForMonitor(mode, pScrn->monitor);
 			mode = mode->next;
@@ -721,6 +721,12 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
                                              "bits per pixel\n");
 	}
 
+	if(!GLAMODrawExaInit(pScreen, pScrn)) {
+		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+			"EXA hardware acceleration initialization failed\n");
+		return FALSE;
+	}
+
 	xf86SetBlackWhitePixels(pScreen);
 	miInitializeBackingStore(pScreen);
 	xf86SetBackingStore(pScreen);
@@ -737,7 +743,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	}
 
 	flags = CMAP_PALETTED_TRUECOLOR;
-	if(!xf86HandleColormaps(pScreen, 256, 8, fbdevHWLoadPaletteWeak(), 
+	if(!xf86HandleColormaps(pScreen, 256, 8, fbdevHWLoadPaletteWeak(),
 				NULL, flags))
 		return FALSE;
 
@@ -768,7 +774,7 @@ GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen)
 {
 	ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
 	GlamoPtr fPtr = GlamoPTR(pScrn);
-	
+
 	fbdevHWRestore(pScrn);
 	fbdevHWUnmapVidmem(pScrn);
 	if (fPtr->shadow) {
@@ -998,7 +1004,7 @@ GlamoRandRGetInfo(ScrnInfoPtr pScrn, Rotation *rotations)
 {
 	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
 			   "GlamoRandRGetInfo got here!\n");
-	
+
     *rotations = RR_Rotate_0 | RR_Rotate_90 | RR_Rotate_270;
 
     return TRUE;
@@ -1033,7 +1039,7 @@ static Bool
 GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
 {
     xorgHWFlags *flag;
-  
+
     switch (op) {
 	case GET_REQUIRED_HW_INTERFACES:
 	    flag = (CARD32*)ptr;

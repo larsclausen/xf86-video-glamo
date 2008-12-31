@@ -30,6 +30,7 @@ glamo_drv_ladir = @moduledir@/drivers
 
 glamo_drv_la_SOURCES = \
          glamo.c \
+         glamo.h \
          glamo-cmdq.c \
          glamo-funcs.c \
          glamo-draw.c
