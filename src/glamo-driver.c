@@ -196,6 +196,14 @@ static const char *fbdevHWSymbols[] = {
 	NULL
 };
 
+static const char *exaSymbols[] = {
+    "exaDriverAlloc",
+    "exaDriverInit",
+    "exaDriverFini",
+    NULL
+};
+
+
 #ifdef XFree86LOADER
 
 MODULESETUPPROTO(GlamoSetup);
@@ -224,8 +232,8 @@ GlamoSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 	if (!setupDone) {
 		setupDone = TRUE;
 		xf86AddDriver(&Glamo, module, HaveDriverFuncs);
-		LoaderRefSymLists(afbSymbols, fbSymbols,
-				  shadowSymbols, fbdevHWSymbols, NULL);
+		LoaderRefSymLists(fbSymbols,
+				  shadowSymbols, fbdevHWSymbols, exaSymbols, NULL);
 		return (pointer)1;
 	} else {
 		if (errmaj) *errmaj = LDR_ONCEONLY;
@@ -720,6 +728,9 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	    xf86DrvMsg(scrnIndex, X_WARNING, "rotation might be broken at 24 "
                                              "bits per pixel\n");
 	}
+
+	xf86LoadSubModule(pScrn, "exa");
+	xf86LoaderReqSymLists(exaSymbols, NULL);
 
 	if(!GLAMODrawExaInit(pScreen, pScrn)) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
