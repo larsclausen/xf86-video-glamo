@@ -729,6 +729,9 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
                                              "bits per pixel\n");
 	}
 
+	/* map in the registers */
+	fPtr->reg_base = xf86MapVidMem(pScreen->myNum, VIDMEM_MMIO, 0x8000000, 0x2400);
+
 	xf86LoadSubModule(pScrn, "exa");
 	xf86LoaderReqSymLists(exaSymbols, NULL);
 
