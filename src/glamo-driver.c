@@ -732,6 +732,12 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	/* map in the registers */
 	fPtr->reg_base = xf86MapVidMem(pScreen->myNum, VIDMEM_MMIO, 0x8000000, 0x2400);
 
+	fPtr->pScreen = pScreen;
+
+	/*fPtr->cmd_queue_cache = GLAMOCreateCMDQCache(fPtr);*/
+
+	/*GLAMOCMDQCacheSetup(fPtr);*/
+
 	xf86LoadSubModule(pScrn, "exa");
 	xf86LoaderReqSymLists(exaSymbols, NULL);
 
@@ -740,6 +746,8 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 			"EXA hardware acceleration initialization failed\n");
 		return FALSE;
 	}
+
+	GLAMOCMDQCacheSetup(fPtr);
 
 	xf86SetBlackWhitePixels(pScreen);
 	miInitializeBackingStore(pScreen);

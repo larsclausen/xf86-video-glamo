@@ -411,8 +411,14 @@ GLAMOCMDQInit(GlamoPtr pGlamo,
 	char *mmio = pGlamo->reg_base;
 	int cq_len = CQ_LEN;
 
+	xf86DrvMsg(0, X_WARNING,
+			"GLAMOCMDQInit here1\n");
+
 	if (!force && pGlamo->exa_cmd_queue)
 		return TRUE;
+
+	xf86DrvMsg(0, X_WARNING,
+			"GLAMOCMDQInit here2\n");
 
 	pGlamo->ring_len = (cq_len + 1) * 1024;
 
@@ -420,6 +426,10 @@ GLAMOCMDQInit(GlamoPtr pGlamo,
 		exaOffscreenAlloc(pGlamo->pScreen, pGlamo->ring_len + 4,
 				  pGlamo->exa->pixmapOffsetAlign,
 				  TRUE, NULL, NULL);
+
+	xf86DrvMsg(0, X_WARNING,
+			"GLAMOCMDQInit here3\n");
+
 	if (!pGlamo->exa_cmd_queue)
 		return FALSE;
 	pGlamo->ring_addr =
@@ -427,6 +437,10 @@ GLAMOCMDQInit(GlamoPtr pGlamo,
 				pGlamo->exa_cmd_queue->offset);
 
 	GLAMOEngineEnable(pGlamo, GLAMO_ENGINE_CMDQ);
+
+	xf86DrvMsg(0, X_WARNING,
+			"GLAMOCMDQInit here4\n");
+
 	GLAMOCMDQResetCP(pGlamo);
 	return TRUE;
 }
@@ -434,11 +448,15 @@ GLAMOCMDQInit(GlamoPtr pGlamo,
 void
 GLAMOCMDQCacheSetup(GlamoPtr pGlamo)
 {
+	xf86DrvMsg(0, X_WARNING,
+			"here1\n");
 	GLAMOCMDQInit(pGlamo, TRUE);
-
+	xf86DrvMsg(0, X_WARNING,
+			"here2\n");
 	if (pGlamo->cmd_queue_cache)
 		return;
-
+	xf86DrvMsg(0, X_WARNING,
+			"here3\n");
 	pGlamo->cmd_queue_cache = GLAMOCreateCMDQCache(pGlamo);
 	if (pGlamo->cmd_queue_cache == FALSE)
 		FatalError("Failed to allocate cmd queue cache buffer.\n");
