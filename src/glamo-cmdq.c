@@ -442,6 +442,10 @@ GLAMOCMDQInit(GlamoPtr pGlamo,
 			"GLAMOCMDQInit here4\n");
 
 	GLAMOCMDQResetCP(pGlamo);
+
+	xf86DrvMsg(0, X_WARNING,
+			"GLAMOCMDQInit here5\n");
+
 	return TRUE;
 }
 
