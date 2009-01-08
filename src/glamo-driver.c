@@ -747,7 +747,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		return FALSE;
 	}
 
-	GLAMOCMDQCacheSetup(fPtr);
+	GLAMODrawEnable(fPtr);
 
 	xf86SetBlackWhitePixels(pScreen);
 	miInitializeBackingStore(pScreen);

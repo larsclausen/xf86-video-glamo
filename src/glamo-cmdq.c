@@ -278,7 +278,7 @@ GLAMOEngineWaitReal(GlamoPtr pGlamo,
 		GLAMO_LOG_ERROR("Timeout idling accelerator "
 				"(0x%x), resetting...\n",
 				status);
-		GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
+		/*GLAMODumpRegs(pGlamo, 0x1600, 0x1612);*/
 		GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
 		GLAMOEngineEnable(pGlamo, GLAMO_ENGINE_2D);
         GLAMOEngineReset(pGlamo, GLAMO_ENGINE_2D);
@@ -338,7 +338,7 @@ GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 		pGlamo->ring_write++; addr++;
 		if (pGlamo->ring_write >= ring_count) {
 			GLAMO_LOG_ERROR("wrapped over ring_write\n");
-			GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
+			/*GLAMODumpRegs(pGlamo, 0x1600, 0x1612);*/
 			pGlamo->ring_write = 0;
 		}
 		count--;
@@ -346,7 +346,7 @@ GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 	if (TIMEDOUT()) {
 		GLAMO_LOG_ERROR("Timeout submitting packets, "
 				"resetting...\n");
-		GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
+		/*GLAMODumpRegs(pGlamo, 0x1600, 0x1612);*/
 		GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
 		GLAMODrawSetup(pGlamo);
 	}
@@ -453,14 +453,14 @@ void
 GLAMOCMDQCacheSetup(GlamoPtr pGlamo)
 {
 	xf86DrvMsg(0, X_WARNING,
-			"here1\n");
+			"GLAMOCMDQCacheSetup here1\n");
 	GLAMOCMDQInit(pGlamo, TRUE);
 	xf86DrvMsg(0, X_WARNING,
-			"here2\n");
+			"GLAMOCMDQCacheSetup here2\n");
 	if (pGlamo->cmd_queue_cache)
 		return;
 	xf86DrvMsg(0, X_WARNING,
-			"here3\n");
+			"GLAMOCMDQCacheSetup here3\n");
 	pGlamo->cmd_queue_cache = GLAMOCreateCMDQCache(pGlamo);
 	if (pGlamo->cmd_queue_cache == FALSE)
 		FatalError("Failed to allocate cmd queue cache buffer.\n");

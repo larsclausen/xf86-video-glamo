@@ -170,6 +170,21 @@ GLAMOWakeupHandler(pointer blockData, int result, pointer readmask)
 {
 }
 
+void
+GLAMODrawSetup(GlamoPtr pGlamo)
+{
+	GLAMOEngineEnable(pGlamo, GLAMO_ENGINE_2D);
+	GLAMOEngineReset(pGlamo, GLAMO_ENGINE_2D);
+}
+
+void
+GLAMODrawEnable(GlamoPtr pGlamo)
+{
+	GLAMOCMDQCacheSetup(pGlamo);
+	GLAMODrawSetup(pGlamo);
+	GLAMOEngineWait(pGlamo->pScreen, GLAMO_ENGINE_ALL);
+}
+
 Bool
 GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 {
@@ -377,15 +392,15 @@ GLAMOExaCopy(PixmapPtr       pDst,
 		  srcX, srcY, dstX, dstY,
 		  width, height);
 
-	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
-			"here1\n");
+/*	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+			"GLAMOExaCopy here1\n");*/
 	BEGIN_CMDQ(34);
-	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
-			"here2\n");
+/*	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+			"GLAMOExaCopy here2\n");*/
 
 	OUT_REG(GLAMO_REG_2D_SRC_ADDRL, pGlamo->src_offset & 0xffff);
-	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
-			"here3\n");
+/*	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+			"GLAMOExaCopy here3\n");*/
 
 	OUT_REG(GLAMO_REG_2D_SRC_ADDRH, (pGlamo->src_offset >> 16) & 0x7f);
 	OUT_REG(GLAMO_REG_2D_SRC_PITCH, pGlamo->src_pitch);

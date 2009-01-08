@@ -214,7 +214,7 @@ Bool
 GLAMODrawInit(ScreenPtr pScreen);
 
 void
-GLAMODrawEnable(ScreenPtr pScreen);
+GLAMODrawEnable(GlamoPtr pScreen);
 
 void
 GLAMODrawDisable(ScreenPtr pScreen);
