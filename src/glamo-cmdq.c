@@ -278,7 +278,7 @@ GLAMOEngineWaitReal(GlamoPtr pGlamo,
 		GLAMO_LOG_ERROR("Timeout idling accelerator "
 				"(0x%x), resetting...\n",
 				status);
-		/*GLAMODumpRegs(pGlamo, 0x1600, 0x1612);*/
+		GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
 		GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
 		GLAMOEngineEnable(pGlamo, GLAMO_ENGINE_2D);
         GLAMOEngineReset(pGlamo, GLAMO_ENGINE_2D);
@@ -338,7 +338,7 @@ GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 		pGlamo->ring_write++; addr++;
 		if (pGlamo->ring_write >= ring_count) {
 			GLAMO_LOG_ERROR("wrapped over ring_write\n");
-			/*GLAMODumpRegs(pGlamo, 0x1600, 0x1612);*/
+			GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
 			pGlamo->ring_write = 0;
 		}
 		count--;
@@ -346,7 +346,7 @@ GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 	if (TIMEDOUT()) {
 		GLAMO_LOG_ERROR("Timeout submitting packets, "
 				"resetting...\n");
-		/*GLAMODumpRegs(pGlamo, 0x1600, 0x1612);*/
+		GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
 		GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
 		GLAMODrawSetup(pGlamo);
 	}
@@ -379,6 +379,9 @@ GLAMOCMDQResetCP(GlamoPtr pGlamo)
 	char *mmio = pGlamo->reg_base;
 	int cq_len = CQ_LEN;
 	CARD32 queue_offset = 0;
+
+	xf86DrvMsg(0, X_WARNING,
+			"GLAMOCMDQResetCP %x %d\n", pGlamo->ring_addr, pGlamo->ring_len );
 
 	/* make the decoder happy? */
 	memset((char*)pGlamo->ring_addr, 0, pGlamo->ring_len+2);
@@ -475,3 +478,16 @@ GLAMOCMQCacheTeardown(GlamoPtr pGlamo)
 	xfree(pGlamo->cmd_queue_cache);
 	pGlamo->cmd_queue_cache = NULL;
 }
+
+void GLAMODumpRegs(GlamoPtr pGlamo,
+              CARD16 from,
+              CARD16 to)
+{
+	int i=0;
+	for (i=from; i <= to; i += 2) {
+			xf86DrvMsg(0, X_WARNING,"reg:%#x, val:%#x\n",
+		pGlamo->reg_base+i,
+		*(VOL16*)(pGlamo->reg_base+i));
+	}
+}
+

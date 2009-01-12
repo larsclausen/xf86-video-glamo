@@ -203,9 +203,9 @@ void
 GLAMOUnmapReg(KdCardInfo *card, GLAMOCardInfo *glamoc);
 
 void
-GLAMODumpRegs(GLAMOScreenInfo *glamos,
-	      CARD16 from,
-	      CARD16 to);
+GLAMODumpRegs(GlamoPtr pGlamo,
+              CARD16 from,
+              CARD16 to)
 
 #endif
 
