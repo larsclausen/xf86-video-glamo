@@ -23,6 +23,8 @@
  *  Dodji Seketeli <dodji@openedhand.com>
  */
 
+#include <unistd.h>
+
 #include "glamo-log.h"
 #include "glamo.h"
 #include "glamo-funcs.h"
@@ -139,6 +141,8 @@ GLAMOResetEngine(GlamoPtr pGlamo, enum GLAMOEngine engine)
 			reg = GLAMO_REG_CLOCK_2D;
 			mask = GLAMO_CLOCK_2D_RESET;
 			break;
+        default:
+            return;
 	}
 
 	GLAMOSetBitMask(pGlamo, reg, mask, 0xffff);
@@ -238,6 +242,8 @@ GLAMOEnableEngine(GlamoPtr pGlamo, enum GLAMOEngine engine)
 					GLAMO_CLOCK_GEN51_EN_DIV_GCLK,
 					0xffff);
 			break;
+        default:
+            break;
 	}
 	usleep(1000);
 	engine_status[engine] |= STATUS_ENABLED;
@@ -399,6 +405,7 @@ GLAMOISPYuvRgbPipelineInit(GlamoPtr pGlamo)
 	GLAMO_LOG("leave\n");
 }
 
+#if 0
 static void
 GLAMOISPColorKeyOverlayInit(GlamoPtr pGlamo)
 {
@@ -413,6 +420,7 @@ GLAMOISPColorKeyOverlayInit(GlamoPtr pGlamo)
 			GLAMO_ISP_EN4_OVERLAY|GLAMO_ISP_EN4_LCD_OVERLAY,
 			0x0003);
 }
+#endif
 
 void
 GLAMOISPSetColorKeyOverlay(GlamoPtr	pGlamo,
@@ -435,7 +443,7 @@ GLAMOISPSetColorKeyOverlay(GlamoPtr	pGlamo,
 		  start_addr, x, y, width, height, pitch,
 		  red_key, green_key, blue_key);
 
-	green_red_keys = (green_key << 8+2) & 0xff00;
+	green_red_keys = (green_key << (8+2)) & 0xff00;
 	green_red_keys |= (red_key << 3) & 0x00ff;
 
 	BEGIN_CMDQ(18);
@@ -514,7 +522,6 @@ GLAMOISPDisplayYUVPlanarFrame (GlamoPtr pGlamo,
 			       short scale_w,
 			       short scale_h)
 {
-	int en3;
 	RING_LOCALS;
 
 

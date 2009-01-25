@@ -214,6 +214,9 @@ Bool
 GLAMODrawInit(ScreenPtr pScreen);
 
 void
+GLAMODrawSetup(GlamoPtr pGlamo);
+
+void
 GLAMODrawEnable(GlamoPtr pScreen);
 
 void
@@ -227,5 +230,8 @@ GLAMORecolorCursor(ScreenPtr pScreen, int ndef, xColorItem *pdef);
 
 int
 GLAMOLog2(int val);
+
+Bool
+GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn);
 
 #endif /* _GLAMO_H_ */

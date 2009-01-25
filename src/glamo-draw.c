@@ -70,8 +70,6 @@ static const CARD8 GLAMOBltRop[16] = {
     /* GXset        */      0xff,         /* 1 */
 };
 
-static CARD32 settings, color, src_pitch_offset, dst_pitch_offset;
-
 /********************************
  * exa entry points declarations
  ********************************/
@@ -190,7 +188,6 @@ GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 {
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
-	int offscreen_memory_size = 0;
 	Bool success = FALSE;
 	ExaDriverPtr exa;
 
@@ -264,6 +261,7 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
 	CARD32 offset, pitch;
+    CARD8 op;
 	FbBits mask;
 	RING_LOCALS;
 
@@ -275,7 +273,7 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 		GLAMO_FALLBACK(("Can't do planemask 0x%08x\n",
 				(unsigned int) pm));
 
-	settings = GLAMOSolidRop[alu] << 8;
+	op = GLAMOSolidRop[alu] << 8;
 	offset = exaGetPixmapOffset(pPix);
 	pitch = pPix->devKind;
 
@@ -287,7 +285,7 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 	OUT_REG(GLAMO_REG_2D_DST_PITCH, pitch);
 	OUT_REG(GLAMO_REG_2D_DST_HEIGHT, pPix->drawable.height);
 	OUT_REG(GLAMO_REG_2D_PAT_FG, fg);
-	OUT_REG(GLAMO_REG_2D_COMMAND2, settings);
+	OUT_REG(GLAMO_REG_2D_COMMAND2, op);
 	END_CMDQ();
 	GLAMO_LOG("leave\n");
 
@@ -337,11 +335,7 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 {
 	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
-
-	CARD32 src_offset, src_pitch;
-	CARD32 dst_offset, dst_pitch;
 	FbBits mask;
-	RING_LOCALS;
 
 	GLAMO_LOG("enter\n");
 
@@ -529,7 +523,7 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 	src_pitch = pSrc->devKind;
 	src = pGlamo->exa->memoryBase + exaGetPixmapOffset(pSrc) +
 						x*bpp + y*src_pitch;
-	dst_offset = dst ;
+	dst_offset = (unsigned char*)dst;
 
 	GLAMO_LOG("dst_pitch:%d, src_pitch\n", dst_pitch, src_pitch);
 	for (i = 0; i < h; i++) {
@@ -544,7 +538,7 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 void
 GLAMOExaWaitMarker (ScreenPtr pScreen, int marker)
 {
-	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
+	ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 	GLAMO_LOG("enter\n");
 	GLAMOEngineWait(pGlamo, GLAMO_ENGINE_ALL);

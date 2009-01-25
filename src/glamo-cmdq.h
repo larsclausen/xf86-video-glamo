@@ -26,7 +26,7 @@
 #ifndef _GLAMO_DMA_H_
 #define _GLAMO_DMA_H_
 
-#define CCE_DEBUG 1
+#define CCE_DEBUG 0
 
 #if !CCE_DEBUG
 
@@ -43,6 +43,15 @@ do {									\
 } while (0)
 #define END_CMDQ() do {							\
 	pGlamo->cmd_queue_cache->used += __count * 2;			\
+} while (0)
+
+#define OUT_BURST_REG(reg, val) do {                                   \
+       __head[__count++] = (val);                                      \
+} while (0)
+
+#define OUT_BURST(reg, n)                                              \
+do {                                                                   \
+       OUT_PAIR((1 << 15) | reg, n);                                   \
 } while (0)
 
 #else
@@ -69,14 +78,6 @@ do {									\
 	pGlamo->cmd_queue_cache->used += __count * 2;			\
 } while (0)
 
-#endif
-
-#define OUT_PAIR(v1, v2)                                               \
-do {                                                                   \
-       __head[__count++] = (v1);                                       \
-       __head[__count++] = (v2);                                       \
-} while (0)
-
 #define OUT_BURST_REG(reg, val) do {                                   \
        if (__reg != reg)                                               \
                FatalError("unexpected reg (0x%x vs 0x%x) at %s:%d\n",  \
@@ -88,15 +89,25 @@ do {                                                                   \
        __reg += 2;                                                     \
 } while (0)
 
-#define OUT_REG(reg, val)                                              \
-       OUT_PAIR(reg, val)
-
 #define OUT_BURST(reg, n)                                              \
 do {                                                                   \
        OUT_PAIR((1 << 15) | reg, n);                                   \
        __reg = reg;                                                    \
        __packet0count = n;                                             \
 } while (0)
+
+#endif
+
+#define OUT_PAIR(v1, v2)                                               \
+do {                                                                   \
+       __head[__count++] = (v1);                                       \
+       __head[__count++] = (v2);                                       \
+} while (0)
+
+
+#define OUT_REG(reg, val)                                              \
+       OUT_PAIR(reg, val)
+
 
 
 #define TIMEOUT_LOCALS struct timeval _target, _curtime

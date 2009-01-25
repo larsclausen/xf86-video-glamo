@@ -60,8 +60,8 @@ static Bool	GlamoPreInit(ScrnInfoPtr pScrn, int flags);
 static Bool	GlamoScreenInit(int Index, ScreenPtr pScreen, int argc,
 				char **argv);
 static Bool	GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen);
-static void *	GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
-				  CARD32 *size, void *closure);
+/*static void *	GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
+				  CARD32 *size, void *closure);*/
 static void	GlamoPointerMoved(int index, int x, int y);
 static Bool	GlamoDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen);
 static Bool	GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
@@ -135,11 +135,11 @@ static const OptionInfoRec GlamoOptions[] = {
 
 /* -------------------------------------------------------------------- */
 
-static const char *afbSymbols[] = {
+/*static const char *afbSymbols[] = {
 	"afbScreenInit",
 	"afbCreateDefColormap",
 	NULL
-};
+};*/
 
 static const char *fbSymbols[] = {
 	"fbScreenInit",
@@ -438,9 +438,8 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 {
 	GlamoPtr fPtr;
 	int default_depth, fbbpp;
-	const char *mod = NULL, *s;
-	const char **syms = NULL;
-	int type;
+	const char /**mod = NULL,*/ *s;
+	/*const char **syms = NULL;*/
 
 	if (flags & PROBE_DETECT) return FALSE;
 
@@ -608,10 +607,9 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	GlamoPtr fPtr = GlamoPTR(pScrn);
 	VisualPtr visual;
 	int init_picture = 0;
-	int ret, flags;
-	int type;
+    int ret, flags;
 
-	TRACE_ENTER("GlamoScreenInit");
+    TRACE_ENTER("GlamoScreenInit");
 
 #if DEBUG
 	ErrorF("\tbitsPerPixel=%d, depth=%d, defaultVisual=%s\n"
@@ -820,7 +818,7 @@ GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen)
 /***********************************************************************
  * Shadow stuff
  ***********************************************************************/
-
+#if 0
 static void *
 GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
 		 CARD32 *size, void *closure)
@@ -838,7 +836,7 @@ GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
 
     return ((CARD8 *)fPtr->fbstart + row * fPtr->lineLength + offset);
 }
-
+#endif
 static void
 GlamoPointerMoved(int index, int x, int y)
 {
@@ -876,7 +874,6 @@ GlamoPointerMoved(int index, int x, int y)
     /* Pass adjusted pointer coordinates to wrapped PointerMoved function. */
     (*fPtr->PointerMoved)(index, newX, newY);
 }
-
 
 /***********************************************************************
  * DGA stuff

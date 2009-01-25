@@ -24,6 +24,7 @@
  */
 
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "glamo-log.h"
 #include "glamo.h"
@@ -32,6 +33,8 @@
 #include "glamo-draw.h"
 
 static void GLAMOCMDQResetCP(GlamoPtr pGlamo);
+static void GLAMODumpRegs(GlamoPtr pGlamo, CARD16 from, CARD16 to);
+
 #ifndef NDEBUG
 static void
 GLAMODebugFifo(GlamoPtr pGlamo)
@@ -381,7 +384,7 @@ GLAMOCMDQResetCP(GlamoPtr pGlamo)
 	CARD32 queue_offset = 0;
 
 	xf86DrvMsg(0, X_WARNING,
-			"GLAMOCMDQResetCP %x %d\n", pGlamo->ring_addr, pGlamo->ring_len );
+			"GLAMOCMDQResetCP %p %d\n", (void *)pGlamo->ring_addr, pGlamo->ring_len );
 
 	/* make the decoder happy? */
 	memset((char*)pGlamo->ring_addr, 0, pGlamo->ring_len+2);
@@ -411,7 +414,6 @@ static Bool
 GLAMOCMDQInit(GlamoPtr pGlamo,
 	      Bool force)
 {
-	char *mmio = pGlamo->reg_base;
 	int cq_len = CQ_LEN;
 
 	xf86DrvMsg(0, X_WARNING,
@@ -479,13 +481,14 @@ GLAMOCMQCacheTeardown(GlamoPtr pGlamo)
 	pGlamo->cmd_queue_cache = NULL;
 }
 
-void GLAMODumpRegs(GlamoPtr pGlamo,
+static void
+GLAMODumpRegs(GlamoPtr pGlamo,
               CARD16 from,
               CARD16 to)
 {
 	int i=0;
 	for (i=from; i <= to; i += 2) {
-			xf86DrvMsg(0, X_WARNING,"reg:%#x, val:%#x\n",
+			xf86DrvMsg(0, X_WARNING,"reg:%p, val:%#x\n",
 		pGlamo->reg_base+i,
 		*(VOL16*)(pGlamo->reg_base+i));
 	}
