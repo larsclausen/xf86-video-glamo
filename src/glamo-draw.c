@@ -182,7 +182,7 @@ GLAMODrawEnable(GlamoPtr pGlamo)
 {
 	GLAMOCMDQCacheSetup(pGlamo);
 	GLAMODrawSetup(pGlamo);
-	GLAMOEngineWait(pGlamo->pScreen, GLAMO_ENGINE_ALL);
+	GLAMOEngineWait(pGlamo, GLAMO_ENGINE_ALL);
 }
 
 Bool
@@ -544,7 +544,9 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 void
 GLAMOExaWaitMarker (ScreenPtr pScreen, int marker)
 {
+	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
+	GlamoPtr pGlamo = GlamoPTR(pScrn);
 	GLAMO_LOG("enter\n");
-	GLAMOEngineWait(pScreen, GLAMO_ENGINE_ALL);
+	GLAMOEngineWait(pGlamo, GLAMO_ENGINE_ALL);
 	GLAMO_LOG("leave\n");
 }
