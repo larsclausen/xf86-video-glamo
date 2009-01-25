@@ -31,45 +31,10 @@
 #include "glamo-regs.h"
 #include "glamo-cmdq.h"
 
-#define GLAMO_OUT_REG(glamo_mmio, reg, val) \
-	(*((volatile unsigned short *) ((glamo_mmio) + (reg))) = (val))
-
-#define GLAMO_IN_REG(glamo_mmio, reg) \
-	(*((volatile unsigned short *) ((glamo_mmio) + (reg))))
-
-void
-GLAMOOutReg(GlamoPtr pGlamo, unsigned short reg, unsigned short val)
-{
-	GLAMO_LOG("mark: pScreen:%#x, reg:%#x, val:%#x, reg_base:%#x\n",
-		  pGlamo, reg, val, pGlamo->reg_base);
-	if (!pGlamo->reg_base) {
-		GLAMO_LOG_ERROR("got null glamoc->reg_base\n");
-		return;
-	}
-	GLAMO_OUT_REG(pGlamo->reg_base, reg, val);
-}
-
-unsigned short
-GLAMOInReg(GlamoPtr pGlamo, unsigned short reg)
-{
-	GLAMO_LOG("mark: pScreen:%#x, reg:%#x, reg_base:%#x\n",
-		  pGlamo, reg, pGlamo->reg_base);
-	if (!pGlamo->reg_base) {
-		GLAMO_LOG_ERROR("got null glamoc->reg_base\n");
-		return 0;
-	}
-	return GLAMO_IN_REG(pGlamo->reg_base, reg);
-}
-
 void
 GLAMOSetBitMask(GlamoPtr pGlamo, int reg, int mask, int val)
 {
-	int old;
-	old = GLAMOInReg(pGlamo, reg);
-	old &= ~mask;
-	old |= val & mask;
-	GLAMO_LOG("mark\n");
-	GLAMOOutReg(pGlamo, reg, old);
+    MMIOSetBitMask(pGlamo->reg_base, reg, mask, val);
 }
 
 void
@@ -78,18 +43,18 @@ setCmdMode (GlamoPtr pGlamo, Bool on)
 	if (on) {
 		GLAMO_LOG("mark\n");
 		/*TODO: busy waiting is bad*/
-		while (!GLAMOInReg(pGlamo, GLAMO_REG_LCD_STATUS1)
+		while (!MMIO_IN16(pGlamo->reg_base, GLAMO_REG_LCD_STATUS1)
 		       & (1 << 15)) {
 			GLAMO_LOG("mark\n");
 			usleep(1 * 1000);
 		}
 		GLAMO_LOG("mark\n");
-		GLAMOOutReg(pGlamo,
+		MMIO_OUT16(pGlamo->reg_base,
 			    GLAMO_REG_LCD_COMMAND1,
 			    GLAMO_LCD_CMD_TYPE_DISP |
 			    GLAMO_LCD_CMD_DATA_FIRE_VSYNC);
 		GLAMO_LOG("mark\n");
-		while (!GLAMOInReg(pGlamo, GLAMO_REG_LCD_STATUS2)
+		while (!MMIO_IN16(pGlamo->reg_base, GLAMO_REG_LCD_STATUS2)
 		       & (1 << 12)) {
 			GLAMO_LOG("mark\n");
 			usleep(1 * 1000);
@@ -99,12 +64,12 @@ setCmdMode (GlamoPtr pGlamo, Bool on)
 		usleep(100 * 1000);
 	} else {
 		GLAMO_LOG("mark\n");
-		GLAMOOutReg(pGlamo,
+		MMIO_OUT16(pGlamo->reg_base,
 			    GLAMO_REG_LCD_COMMAND1,
 			    GLAMO_LCD_CMD_TYPE_DISP |
 			    GLAMO_LCD_CMD_DATA_DISP_SYNC);
 		GLAMO_LOG("mark\n");
-		GLAMOOutReg(pGlamo,
+		MMIO_OUT16(pGlamo->reg_base,
 			    GLAMO_REG_LCD_COMMAND1,
 			    GLAMO_LCD_CMD_TYPE_DISP |
 			    GLAMO_LCD_CMD_DATA_DISP_FIRE);
@@ -145,9 +110,9 @@ GLAMOResetEngine(GlamoPtr pGlamo, enum GLAMOEngine engine)
             return;
 	}
 
-	GLAMOSetBitMask(pGlamo, reg, mask, 0xffff);
+	MMIOSetBitMask(pGlamo->reg_base, reg, mask, 0xffff);
 	usleep(1000);
-	GLAMOSetBitMask(pGlamo, reg, mask, 0);
+	MMIOSetBitMask(pGlamo->reg_base, reg, mask, 0);
 	usleep(1000);
 
 	GLAMO_LOG("leave\n");
@@ -160,14 +125,14 @@ GLAMOEnableEngine(GlamoPtr pGlamo, enum GLAMOEngine engine)
 	if (engine_status[engine] & STATUS_ENABLED)
 		return;
 
-	GLAMOSetBitMask(pGlamo,
+	MMIOSetBitMask(pGlamo->reg_base,
 			GLAMO_REG_CLOCK_GEN5_1,
 			GLAMO_CLOCK_GEN51_EN_DIV_MCLK,
 			0xffff);
 
 	switch (engine) {
 		case GLAMO_ENGINE_MPEG:
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_MPEG,
 					GLAMO_CLOCK_MPEG_EN_X6CLK |
 					GLAMO_CLOCK_MPEG_DG_X6CLK |
@@ -178,66 +143,66 @@ GLAMOEnableEngine(GlamoPtr pGlamo, enum GLAMOEngine engine)
 					GLAMO_CLOCK_MPEG_EN_X0CLK |
 					GLAMO_CLOCK_MPEG_DG_X0CLK,
 					0xffff & ~GLAMO_CLOCK_MPEG_DG_X0CLK);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_MPROC,
 					GLAMO_CLOCK_MPROC_EN_M4CLK,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_GEN5_1,
 					GLAMO_CLOCK_GEN51_EN_DIV_JCLK,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_MPEG |
 					GLAMO_HOSTBUS2_MMIO_EN_MICROP1,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_MPROC,
 					GLAMO_CLOCK_MPROC_EN_KCLK,
 					0xffff);
 			break;
 		case GLAMO_ENGINE_ISP:
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_ISP,
 					GLAMO_CLOCK_ISP_EN_M2CLK |
 					GLAMO_CLOCK_ISP_EN_I1CLK,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_GEN5_2,
 					GLAMO_CLOCK_GEN52_EN_DIV_ICLK,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_GEN5_1,
 					GLAMO_CLOCK_GEN51_EN_DIV_JCLK,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_ISP,
 					0xffff);
 			break;
 		case GLAMO_ENGINE_CMDQ:
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_2D,
 					GLAMO_CLOCK_2D_EN_M6CLK,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_CMDQ,
 					0xffff);
 			break;
 		case GLAMO_ENGINE_2D:
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_2D,
 					GLAMO_CLOCK_2D_EN_M7CLK |
 					GLAMO_CLOCK_2D_EN_GCLK |
 					GLAMO_CLOCK_2D_DG_M7CLK |
 					GLAMO_CLOCK_2D_DG_GCLK,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_HOSTBUS(2),
 					GLAMO_HOSTBUS2_MMIO_EN_2D,
 					0xffff);
-			GLAMOSetBitMask(pGlamo,
+			MMIOSetBitMask(pGlamo->reg_base,
 					GLAMO_REG_CLOCK_GEN5_1,
 					GLAMO_CLOCK_GEN51_EN_DIV_GCLK,
 					0xffff);
@@ -257,7 +222,7 @@ GLAMOISPWaitEngineIdle (GlamoPtr pGlamo)
 {
 	GLAMO_LOG("enter\n");
 	while (1) {
-		int val = GLAMOInReg(pGlamo, GLAMO_REG_ISP_STATUS);
+		int val = MMIO_IN16(pGlamo->reg_base, GLAMO_REG_ISP_STATUS);
 		if (val & 0x1) {
 			usleep(1 * 1000);
 			GLAMO_LOG("isp busy\n");
@@ -415,7 +380,7 @@ GLAMOISPColorKeyOverlayInit(GlamoPtr pGlamo)
 			GLAMO_REG_ISP_EN2,
 			GLAMO_ISP_EN2_OVERLAY,
 			0x0001);*/
-	GLAMOSetBitMask(pGlamo,
+	MMIOSetBitMask(pGlamo->reg_base,
 			GLAMO_REG_ISP_EN4,
 			GLAMO_ISP_EN4_OVERLAY|GLAMO_ISP_EN4_LCD_OVERLAY,
 			0x0003);
