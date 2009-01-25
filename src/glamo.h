@@ -65,6 +65,31 @@ MMIO_IN16(__volatile__ void *base, const unsigned long offset)
 	return val;
 }
 
+#elif defined(__arm__) /* && !defined(__ARM_EABI__) */
+
+static __inline__ void
+MMIO_OUT16(__volatile__ void *base, const unsigned long offset,
+       const unsigned short val)
+{
+    __asm__ __volatile__(
+            "strh %0, [%1, +%2]"
+            :
+            : "r" (val), "r" (base), "r" (offset)
+            : "memory" );
+}
+
+static __inline__ CARD16
+MMIO_IN16(__volatile__ void *base, const unsigned long offset)
+{
+    register unsigned short val;
+    __asm__ __volatile__(
+            "ldrh %0, [%1, +%2]"
+            : "=r" (val)
+            : "r" (base), "r" (offset)
+            : "memory");
+    return val;
+}
+
 #else
 
 #define MMIO_OUT16(mmio, a, v)		(*(VOL16 *)((mmio) + (a)) = (v))
