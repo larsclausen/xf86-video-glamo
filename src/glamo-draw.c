@@ -320,9 +320,8 @@ GLAMOExaDoneSolid(PixmapPtr pPix)
 	ScrnInfoPtr pScrn = xf86Screens[pPix->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
-	exaWaitSync(pGlamo->pScreen);
-	if (pGlamo->cmd_queue_cache)
-		GLAMOFlushCMDQCache(pGlamo, 1);
+    GLAMOFlushCMDQCache(pGlamo, 1);
+	exaMarkSync(pGlamo->pScreen);
 }
 
 Bool
@@ -336,7 +335,6 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 	FbBits mask;
-
 	GLAMO_LOG("enter\n");
 
 	if (pSrc->drawable.bitsPerPixel != 16 ||
@@ -363,7 +361,7 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 		  pGlamo->fbstart);
 
 	pGlamo->settings = GLAMOBltRop[alu] << 8;
-	exaMarkSync(pDst->drawable.pScreen);
+
 	GLAMO_LOG("leave\n");
 	return TRUE;
 }
@@ -425,11 +423,8 @@ GLAMOExaDoneCopy(PixmapPtr pDst)
 	ScrnInfoPtr pScrn = xf86Screens[pDst->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
-	GLAMO_LOG("enter\n");
-	exaWaitSync(pGlamo->pScreen);
-	if (pGlamo->cmd_queue_cache)
-		GLAMOFlushCMDQCache(pGlamo, 1);
-	GLAMO_LOG("leave\n");
+    GLAMOFlushCMDQCache(pGlamo, 1);
+	exaMarkSync(pGlamo->pScreen);
 }
 
 Bool
@@ -540,6 +535,7 @@ GLAMOExaWaitMarker (ScreenPtr pScreen, int marker)
 {
 	ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
+
 	GLAMO_LOG("enter\n");
 	GLAMOEngineWait(pGlamo, GLAMO_ENGINE_ALL);
 	GLAMO_LOG("leave\n");
