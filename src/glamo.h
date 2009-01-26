@@ -161,50 +161,6 @@ typedef struct {
 
 #define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
 
-#if 0
-typedef struct _GLAMOScreenInfo {
-
-	GLAMOCardInfo *glamoc;
-	KdScreenInfo *screen;
-
-	int		scratch_offset;
-	int		scratch_next;
-	KdOffscreenArea *scratch_area;
-
-	KdVideoAdaptorPtr pAdaptor;
-	int		num_texture_ports;
-
-	KdOffscreenArea *cmd_queue;	/* mmapped on-device cmd queue. */
-	ExaOffscreenArea *exa_cmd_queue;
-	CARD16		*ring_addr;	/* Beginning of ring buffer. */
-	int		ring_write;	/* Index of write ptr in ring. */
-	int		ring_read;	/* Index of read ptr in ring. */
-	int		ring_len;
-	/*
-	 * cmd queue cache in system memory
-	 * It is to be flushed to cmd_queue_space
-	 * "at once", when we are happy with it.
-	 */
-	MemBuf		*cmd_queue_cache;
-	int		cmd_queue_cache_start;
-} GLAMOScreenInfo;
-
-#endif
-
-typedef union { float f; CARD32 i; } fi_type;
-
-/* Surely there's a better way to go about this */
-static inline CARD32
-GLAMOFloatAsInt(float val)
-{
-	fi_type fi;
-
-	fi.f = val;
-	return fi.i;
-}
-
-#define GET_FLOAT_BITS(x) GLAMOFloatAsInt(x)
-
 static inline void
 MMIOSetBitMask(char *mmio, CARD32 reg, CARD16 mask, CARD16 val)
 {
@@ -218,21 +174,6 @@ MMIOSetBitMask(char *mmio, CARD32 reg, CARD16 mask, CARD16 val)
 
 	MMIO_OUT16(mmio, reg, tmp);
 }
-
-#if 0
-/* glamo.c */
-Bool
-GLAMOMapReg(KdCardInfo *card, GLAMOCardInfo *glamoc);
-
-void
-GLAMOUnmapReg(KdCardInfo *card, GLAMOCardInfo *glamoc);
-
-void
-GLAMODumpRegs(GlamoPtr pGlamo,
-              CARD16 from,
-              CARD16 to)
-
-#endif
 
 /* glamo_draw.c */
 Bool
@@ -252,9 +193,6 @@ GLAMODrawFini(ScreenPtr pScreen);
 
 void
 GLAMORecolorCursor(ScreenPtr pScreen, int ndef, xColorItem *pdef);
-
-int
-GLAMOLog2(int val);
 
 Bool
 GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn);
