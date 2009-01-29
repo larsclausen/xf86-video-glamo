@@ -225,8 +225,8 @@ GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 	/*glamos->exa.MarkSync = GLAMOExaMarkSync;*/
 	exa->WaitMarker = GLAMOExaWaitMarker;
 
-	exa->pixmapOffsetAlign = 1;
-	exa->pixmapPitchAlign = 1;
+	exa->pixmapOffsetAlign = 2;
+	exa->pixmapPitchAlign = 2;
 
 	exa->maxX = 640;
 	exa->maxY = 640;
