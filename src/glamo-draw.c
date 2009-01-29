@@ -191,8 +191,6 @@ GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 	Bool success = FALSE;
 	ExaDriverPtr exa;
 
-	GLAMO_LOG("enter\n");
-
 	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			"EXA hardware acceleration initialising\n");
 
@@ -246,8 +244,6 @@ GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
 		ErrorF("Failed to initialize EXA acceleration\n");
 	}
 
-	GLAMO_LOG("leave\n");
-
 	return success;
 }
 
@@ -277,8 +273,6 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 	offset = exaGetPixmapOffset(pPix);
 	pitch = pPix->devKind;
 
-	GLAMO_LOG("enter.pitch:%d\n", pitch);
-
 	BEGIN_CMDQ(12);
 	OUT_REG(GLAMO_REG_2D_DST_ADDRL, offset & 0xffff);
 	OUT_REG(GLAMO_REG_2D_DST_ADDRH, (offset >> 16) & 0x7f);
@@ -287,7 +281,6 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 	OUT_REG(GLAMO_REG_2D_PAT_FG, fg);
 	OUT_REG(GLAMO_REG_2D_COMMAND2, op);
 	END_CMDQ();
-	GLAMO_LOG("leave\n");
 
 	return TRUE;
 }
@@ -297,8 +290,6 @@ GLAMOExaSolid(PixmapPtr pPix, int x1, int y1, int x2, int y2)
 {
 	ScrnInfoPtr pScrn = xf86Screens[pPix->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
-
-	GLAMO_LOG("enter\n");
 
 	RING_LOCALS;
 
@@ -311,7 +302,6 @@ GLAMOExaSolid(PixmapPtr pPix, int x1, int y1, int x2, int y2)
 	OUT_REG(GLAMO_REG_2D_ID1, 0);
 	OUT_REG(GLAMO_REG_2D_ID2, 0);
 	END_CMDQ();
-	GLAMO_LOG("leave\n");
 }
 
 void
@@ -335,7 +325,6 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 	FbBits mask;
-	GLAMO_LOG("enter\n");
 
 	if (pSrc->drawable.bitsPerPixel != 16 ||
 	    pDst->drawable.bitsPerPixel != 16)
@@ -352,17 +341,9 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 
 	pGlamo->dst_offset = exaGetPixmapOffset(pDst);
 	pGlamo->dst_pitch = pDst->devKind;
-	GLAMO_LOG("src_offset:%d, src_pitch:%d, "
-		  "dst_offset:%d, dst_pitch:%d, mem_base:%#x\n",
-		  pGlamo->src_offset,
-		  pGlamo->src_pitch,
-		  pGlamo->dst_offset,
-		  pGlamo->dst_pitch,
-		  pGlamo->fbstart);
 
 	pGlamo->settings = GLAMOBltRop[alu] << 8;
 
-	GLAMO_LOG("leave\n");
 	return TRUE;
 }
 
@@ -380,20 +361,9 @@ GLAMOExaCopy(PixmapPtr       pDst,
 
 	RING_LOCALS;
 
-	GLAMO_LOG("enter (%d,%d,%d,%d),(%dx%d)\n",
-		  srcX, srcY, dstX, dstY,
-		  width, height);
-
-/*	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
-			"GLAMOExaCopy here1\n");*/
 	BEGIN_CMDQ(34);
-/*	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
-			"GLAMOExaCopy here2\n");*/
 
 	OUT_REG(GLAMO_REG_2D_SRC_ADDRL, pGlamo->src_offset & 0xffff);
-/*	xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
-			"GLAMOExaCopy here3\n");*/
-
 	OUT_REG(GLAMO_REG_2D_SRC_ADDRH, (pGlamo->src_offset >> 16) & 0x7f);
 	OUT_REG(GLAMO_REG_2D_SRC_PITCH, pGlamo->src_pitch);
 
@@ -414,7 +384,6 @@ GLAMOExaCopy(PixmapPtr       pDst,
 	OUT_REG(GLAMO_REG_2D_ID1, 0);
 	OUT_REG(GLAMO_REG_2D_ID2, 0);
 	END_CMDQ();
-	GLAMO_LOG("leave\n");
 }
 
 void
@@ -482,13 +451,11 @@ GLAMOExaUploadToScreen(PixmapPtr pDst,
 	CARD8 *dst_offset;
 	int dst_pitch;
 
-	GLAMO_LOG("enter\n");
 	bpp = pDst->drawable.bitsPerPixel / 8;
 	dst_pitch = pDst->devKind;
 	dst_offset = pGlamo->exa->memoryBase + exaGetPixmapOffset(pDst)
 						+ x*bpp + y*dst_pitch;
 
-	GLAMO_LOG("dst_pitch:%d, src_pitch\n", dst_pitch, src_pitch);
 	for (i = 0; i < h; i++) {
 		memcpy(dst_offset, src, w*bpp);
 		dst_offset += dst_pitch;
@@ -512,7 +479,6 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 	CARD8 *dst_offset, *src;
 	int src_pitch;
 
-    GLAMO_LOG("enter\n");
 	bpp = pSrc->drawable.bitsPerPixel;
 	bpp /= 8;
 	src_pitch = pSrc->devKind;
@@ -520,7 +486,6 @@ GLAMOExaDownloadFromScreen(PixmapPtr pSrc,
 						x*bpp + y*src_pitch;
 	dst_offset = (unsigned char*)dst;
 
-	GLAMO_LOG("dst_pitch:%d, src_pitch\n", dst_pitch, src_pitch);
 	for (i = 0; i < h; i++) {
 		memcpy(dst_offset, src, w*bpp);
 		dst_offset += dst_pitch;
@@ -536,7 +501,5 @@ GLAMOExaWaitMarker (ScreenPtr pScreen, int marker)
 	ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
-	GLAMO_LOG("enter\n");
 	GLAMOEngineWait(pGlamo, GLAMO_ENGINE_ALL);
-	GLAMO_LOG("leave\n");
 }
