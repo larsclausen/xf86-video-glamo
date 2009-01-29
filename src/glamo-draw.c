@@ -256,8 +256,8 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 	ScrnInfoPtr pScrn = xf86Screens[pPix->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
 
-	CARD32 offset, pitch;
-    CARD8 op;
+	CARD32 offset;
+    CARD16 op, pitch;
 	FbBits mask;
 	RING_LOCALS;
 
@@ -273,13 +273,15 @@ GLAMOExaPrepareSolid(PixmapPtr      pPix,
 	offset = exaGetPixmapOffset(pPix);
 	pitch = pPix->devKind;
 
-	BEGIN_CMDQ(12);
+	BEGIN_CMDQ(16);
 	OUT_REG(GLAMO_REG_2D_DST_ADDRL, offset & 0xffff);
 	OUT_REG(GLAMO_REG_2D_DST_ADDRH, (offset >> 16) & 0x7f);
-	OUT_REG(GLAMO_REG_2D_DST_PITCH, pitch);
+	OUT_REG(GLAMO_REG_2D_DST_PITCH, pitch & 0x7ff);
 	OUT_REG(GLAMO_REG_2D_DST_HEIGHT, pPix->drawable.height);
 	OUT_REG(GLAMO_REG_2D_PAT_FG, fg);
 	OUT_REG(GLAMO_REG_2D_COMMAND2, op);
+	OUT_REG(GLAMO_REG_2D_ID1, 0);
+	OUT_REG(GLAMO_REG_2D_ID2, 0);
 	END_CMDQ();
 
 	return TRUE;
@@ -293,14 +295,12 @@ GLAMOExaSolid(PixmapPtr pPix, int x1, int y1, int x2, int y2)
 
 	RING_LOCALS;
 
-	BEGIN_CMDQ(14);
+	BEGIN_CMDQ(10);
 	OUT_REG(GLAMO_REG_2D_DST_X, x1);
 	OUT_REG(GLAMO_REG_2D_DST_Y, y1);
 	OUT_REG(GLAMO_REG_2D_RECT_WIDTH, x2 - x1);
 	OUT_REG(GLAMO_REG_2D_RECT_HEIGHT, y2 - y1);
 	OUT_REG(GLAMO_REG_2D_COMMAND3, 0);
-	OUT_REG(GLAMO_REG_2D_ID1, 0);
-	OUT_REG(GLAMO_REG_2D_ID2, 0);
 	END_CMDQ();
 }
 
@@ -324,7 +324,14 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 {
 	ScrnInfoPtr pScrn = xf86Screens[pSrc->drawable.pScreen->myNum];
 	GlamoPtr pGlamo = GlamoPTR(pScrn);
-	FbBits mask;
+
+    RING_LOCALS;
+
+    FbBits mask;
+
+    CARD32 src_offset, dst_offset;
+    CARD16 src_pitch, dst_pitch;
+    CARD16 op;
 
 	if (pSrc->drawable.bitsPerPixel != 16 ||
 	    pDst->drawable.bitsPerPixel != 16)
@@ -336,13 +343,29 @@ GLAMOExaPrepareCopy(PixmapPtr       pSrc,
 				(unsigned int) pm));
 	}
 
-	pGlamo->src_offset = exaGetPixmapOffset(pSrc);
-	pGlamo->src_pitch = pSrc->devKind;
+	src_offset = exaGetPixmapOffset(pSrc);
+	src_pitch = pSrc->devKind;
 
-	pGlamo->dst_offset = exaGetPixmapOffset(pDst);
-	pGlamo->dst_pitch = pDst->devKind;
+	dst_offset = exaGetPixmapOffset(pDst);
+	dst_pitch = pDst->devKind;
 
-	pGlamo->settings = GLAMOBltRop[alu] << 8;
+	op = GLAMOBltRop[alu] << 8;
+
+    BEGIN_CMDQ(20);
+    OUT_REG(GLAMO_REG_2D_SRC_ADDRL, src_offset & 0xffff);
+	OUT_REG(GLAMO_REG_2D_SRC_ADDRH, (src_offset >> 16) & 0x7f);
+	OUT_REG(GLAMO_REG_2D_SRC_PITCH, src_pitch & 0x7ff);
+
+	OUT_REG(GLAMO_REG_2D_DST_ADDRL, dst_offset & 0xffff);
+	OUT_REG(GLAMO_REG_2D_DST_ADDRH, (dst_offset >> 16) & 0x7f);
+	OUT_REG(GLAMO_REG_2D_DST_PITCH, dst_pitch & 0x7ff);
+	OUT_REG(GLAMO_REG_2D_DST_HEIGHT, pDst->drawable.height);
+
+	OUT_REG(GLAMO_REG_2D_COMMAND2, op);
+	OUT_REG(GLAMO_REG_2D_ID1, 0);
+	OUT_REG(GLAMO_REG_2D_ID2, 0);
+	END_CMDQ();
+
 
 	return TRUE;
 }
@@ -361,18 +384,7 @@ GLAMOExaCopy(PixmapPtr       pDst,
 
 	RING_LOCALS;
 
-	BEGIN_CMDQ(34);
-
-	OUT_REG(GLAMO_REG_2D_SRC_ADDRL, pGlamo->src_offset & 0xffff);
-	OUT_REG(GLAMO_REG_2D_SRC_ADDRH, (pGlamo->src_offset >> 16) & 0x7f);
-	OUT_REG(GLAMO_REG_2D_SRC_PITCH, pGlamo->src_pitch);
-
-	OUT_REG(GLAMO_REG_2D_DST_ADDRL, pGlamo->dst_offset & 0xffff);
-	OUT_REG(GLAMO_REG_2D_DST_ADDRH, (pGlamo->dst_offset >> 16) & 0x7f);
-	OUT_REG(GLAMO_REG_2D_DST_PITCH, pGlamo->dst_pitch);
-	OUT_REG(GLAMO_REG_2D_DST_HEIGHT, pDst->drawable.height);
-
-	OUT_REG(GLAMO_REG_2D_COMMAND2, pGlamo->settings);
+	BEGIN_CMDQ(14);
 
 	OUT_REG(GLAMO_REG_2D_SRC_X, srcX);
 	OUT_REG(GLAMO_REG_2D_SRC_Y, srcY);
@@ -381,8 +393,6 @@ GLAMOExaCopy(PixmapPtr       pDst,
 	OUT_REG(GLAMO_REG_2D_RECT_WIDTH, width);
 	OUT_REG(GLAMO_REG_2D_RECT_HEIGHT, height);
 	OUT_REG(GLAMO_REG_2D_COMMAND3, 0);
-	OUT_REG(GLAMO_REG_2D_ID1, 0);
-	OUT_REG(GLAMO_REG_2D_ID2, 0);
 	END_CMDQ();
 }
 
