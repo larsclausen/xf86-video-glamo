@@ -35,6 +35,11 @@
 static void GLAMOCMDQResetCP(GlamoPtr pGlamo);
 static void GLAMODumpRegs(GlamoPtr pGlamo, CARD16 from, CARD16 to);
 
+#define CQ_LEN 255
+#define CQ_MASK ((CQ_LEN + 1) * 1024 - 1)
+#define CQ_MASKL (CQ_MASK & 0xffff)
+#define CQ_MASKH (CQ_MASK >> 16)
+
 #ifndef NDEBUG
 static void
 GLAMODebugFifo(GlamoPtr pGlamo)
@@ -61,7 +66,7 @@ GLAMOEngineReset(GlamoPtr pGlamo, enum GLAMOEngine engine)
 {
 	CARD32 reg;
 	CARD16 mask;
-	char *mmio = pGlamo->reg_base;
+	volatile char *mmio = pGlamo->reg_base;
 
 	if (!mmio)
 		return;
@@ -84,20 +89,20 @@ GLAMOEngineReset(GlamoPtr pGlamo, enum GLAMOEngine engine)
 			break;
 	}
 	MMIOSetBitMask(mmio, reg, mask, 0xffff);
-	usleep(5);
-	MMIOSetBitMask(mmio, reg, mask, 0);
-	usleep(5);
-
+    sleep(1);
+    MMIOSetBitMask(mmio, reg, mask, 0);
+    sleep(1);
 }
 
 void
 GLAMOEngineDisable(GlamoPtr pGlamo, enum GLAMOEngine engine)
 {
-	char *mmio = pGlamo->reg_base;
+	volatile char *mmio = pGlamo->reg_base;
 
 	if (!mmio)
 		return;
-	switch (engine) {
+
+    switch (engine) {
 		case GLAMO_ENGINE_CMDQ:
 			MMIOSetBitMask(mmio, GLAMO_REG_CLOCK_2D,
 					GLAMO_CLOCK_2D_EN_M6CLK,
@@ -141,13 +146,12 @@ GLAMOEngineDisable(GlamoPtr pGlamo, enum GLAMOEngine engine)
 		default:
 			break;
 	}
-	return;
 }
 
 void
 GLAMOEngineEnable(GlamoPtr pGlamo, enum GLAMOEngine engine)
 {
-	char *mmio = pGlamo->reg_base;
+	volatile char *mmio = pGlamo->reg_base;
 
 	if (!mmio)
 		return;
@@ -201,7 +205,7 @@ GLAMOEngineEnable(GlamoPtr pGlamo, enum GLAMOEngine engine)
 int
 GLAMOEngineBusy(GlamoPtr pGlamo, enum GLAMOEngine engine)
 {
-	char *mmio = pGlamo->reg_base;
+	volatile char *mmio = pGlamo->reg_base;
 	CARD16 status, mask, val;
 
 	if (!mmio)
@@ -241,9 +245,8 @@ GLAMOEngineWaitReal(GlamoPtr pGlamo,
 		   enum GLAMOEngine engine,
 		   Bool do_flush)
 {
-	char *mmio = pGlamo->reg_base;
+	volatile char *mmio = pGlamo->reg_base;
 	CARD16 status, mask, val;
-	TIMEOUT_LOCALS;
 
 	if (!mmio)
 		return;
@@ -272,20 +275,9 @@ GLAMOEngineWaitReal(GlamoPtr pGlamo,
 			break;
 	}
 
-	WHILE_NOT_TIMEOUT(5) {
+	do {
 		status = MMIO_IN16(mmio, GLAMO_REG_CMDQ_STATUS);
-		if ((status & mask) == val)
-			break;
-	}
-	if (TIMEDOUT()) {
-		GLAMO_LOG_ERROR("Timeout idling accelerator "
-				"(0x%x), resetting...\n",
-				status);
-		GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
-		GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
-		GLAMOEngineEnable(pGlamo, GLAMO_ENGINE_2D);
-        GLAMOEngineReset(pGlamo, GLAMO_ENGINE_2D);
-	}
+    } while ((status & mask) != val);
 }
 
 void
@@ -304,7 +296,6 @@ GLAMOCreateCMDQCache(GlamoPtr pGlamo)
 	if (buf == NULL)
 		return NULL;
 
-	/*buf->size = glamos->ring_len / 2;*/
 	buf->size = pGlamo->ring_len;
 	buf->address = xcalloc(1, buf->size);
 	if (buf->address == NULL) {
@@ -319,67 +310,96 @@ GLAMOCreateCMDQCache(GlamoPtr pGlamo)
 static void
 GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 {
-	MemBuf *buf = pGlamo->cmd_queue_cache;
-	char *mmio = pGlamo->reg_base;
-	CARD16 *addr;
-	int count, ring_count;
-	TIMEOUT_LOCALS;
+    MemBuf *buf = pGlamo->cmd_queue_cache;
+	volatile char *mmio = pGlamo->reg_base;
+	char *addr;
+	size_t count, ring_count;
+    size_t rest_size;
+    size_t ring_read;
+    size_t old_ring_write = pGlamo->ring_write;
 
-	addr = (CARD16 *)((char *)buf->address + pGlamo->cmd_queue_cache_start);
-	count = (buf->used - pGlamo->cmd_queue_cache_start) / 2;
-	ring_count = pGlamo->ring_len / 2;
-	if (count + pGlamo->ring_write >= ring_count) {
-		GLAMOCMDQResetCP(pGlamo);
-		pGlamo->ring_write = 0;
-	}
+    if (!buf->used)
+        return;
 
-	WHILE_NOT_TIMEOUT(.5) {
-		if (count <= 0)
-			break;
+    addr = ((char *)buf->address);
+	count = buf->used;
+	ring_count = pGlamo->ring_len;
 
-		pGlamo->ring_addr[pGlamo->ring_write] = *addr;
-		pGlamo->ring_write++; addr++;
-		if (pGlamo->ring_write >= ring_count) {
-			GLAMO_LOG_ERROR("wrapped over ring_write\n");
-			GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
-			pGlamo->ring_write = 0;
-		}
-		count--;
-	}
-	if (TIMEDOUT()) {
-		GLAMO_LOG_ERROR("Timeout submitting packets, "
-				"resetting...\n");
-		GLAMODumpRegs(pGlamo, 0x1600, 0x1612);
-		GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
-		GLAMODrawSetup(pGlamo);
-	}
+
+    pGlamo->ring_write = (((pGlamo->ring_write + count) & CQ_MASK) + 1) & ~1;
+
+    /* Wait until there is enough space to queue the cmd buffer */
+    if (pGlamo->ring_write > old_ring_write) {
+        do {
+	        ring_read = MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRL) & CQ_MASKL;
+        	ring_read |= ((MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRH) & CQ_MASKH) << 16);
+        } while(ring_read > old_ring_write && ring_read < pGlamo->ring_write);
+    } else {
+        do {
+	        ring_read = MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRL) & CQ_MASKL;
+        	ring_read |= ((MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRH) & CQ_MASKH) << 16);
+        } while(ring_read > old_ring_write || ring_read < pGlamo->ring_write);
+    }
+
+    /* Wrap around */
+    if (old_ring_write >= pGlamo->ring_write) {
+        rest_size = (ring_count - old_ring_write);
+        memcpy((char*)(pGlamo->ring_addr) + old_ring_write, addr, rest_size);
+        memcpy((char*)(pGlamo->ring_addr), addr+rest_size, count - rest_size);
+
+        /* ring_write being 0 will result in a deadlock because the cmdq read
+         * will never stop. To avoid such an behaviour insert an empty
+         * instruction. */
+        if(pGlamo->ring_write == 0) {
+            memset((char*)(pGlamo->ring_addr), 0, 4);
+            pGlamo->ring_write = 4;
+        }
+
+        /* Before changing write read has to stop */
+        GLAMOEngineWaitReal(pGlamo, GLAMO_ENGINE_CMDQ, FALSE);
+
+        /* The write position has to change to trigger a read */
+        if(old_ring_write == pGlamo->ring_write) {
+            memset((char*)(pGlamo->ring_addr + pGlamo->ring_write), 0, 4);
+            pGlamo->ring_write += 4;
+/*            MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRH,
+                       ((pGlamo->ring_write-4) >> 16) & CQ_MASKH);
+            MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRL,
+                       (pGlamo->ring_write-4) & CQ_MASKL);*/
+        }
+    } else {
+        memcpy((char*)(pGlamo->ring_addr) + old_ring_write, addr, count);
+        GLAMOEngineWaitReal(pGlamo, GLAMO_ENGINE_CMDQ, FALSE);
+       // GLAMODumpRegs(pGlamo, GLAMO_REG_CMDQ_WRITE_ADDRL, GLAMO_REG_CMDQ_READ_ADDRH);
+    }
+    MMIOSetBitMask(mmio, GLAMO_REG_CLOCK_2D,
+					GLAMO_CLOCK_2D_EN_M6CLK,
+					0);
 
 	MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRH,
-			 (pGlamo->ring_write >> 15) & 0x7);
+			   (pGlamo->ring_write >> 16) & CQ_MASKH);
 	MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRL,
-			 (pGlamo->ring_write <<  1) & 0xffff);
-	GLAMOEngineWaitReal(pGlamo,
-			    GLAMO_ENGINE_CMDQ, FALSE);
+			   pGlamo->ring_write & CQ_MASKL);
+
+    MMIOSetBitMask(mmio, GLAMO_REG_CLOCK_2D,
+                GLAMO_CLOCK_2D_EN_M6CLK,
+					0xffff);
+    buf->used = 0;
+
+
+    GLAMOEngineWaitReal(pGlamo, GLAMO_ENGINE_ALL, FALSE);
 }
 
 void
 GLAMOFlushCMDQCache(GlamoPtr pGlamo, Bool discard)
 {
-	MemBuf *buf = pGlamo->cmd_queue_cache;
-
-	if ((pGlamo->cmd_queue_cache_start == buf->used) && !discard)
-		return;
 	GLAMODispatchCMDQCache(pGlamo);
-
-	buf->used = 0;
-	pGlamo->cmd_queue_cache_start = 0;
 }
 
-#define CQ_LEN 255
 static void
 GLAMOCMDQResetCP(GlamoPtr pGlamo)
 {
-	char *mmio = pGlamo->reg_base;
+	volatile char *mmio = pGlamo->reg_base;
 	int cq_len = CQ_LEN;
 	CARD32 queue_offset = 0;
 
@@ -387,7 +407,9 @@ GLAMOCMDQResetCP(GlamoPtr pGlamo)
 			"GLAMOCMDQResetCP %p %d\n", (void *)pGlamo->ring_addr, pGlamo->ring_len );
 
 	/* make the decoder happy? */
-	memset((char*)pGlamo->ring_addr, 0, pGlamo->ring_len+2);
+	memset((char*)pGlamo->ring_addr, 0, pGlamo->ring_len);
+
+    pGlamo->ring_write = 0;
 
 	GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
 
@@ -428,7 +450,7 @@ GLAMOCMDQInit(GlamoPtr pGlamo,
 	pGlamo->ring_len = (cq_len + 1) * 1024;
 
 	pGlamo->exa_cmd_queue =
-		exaOffscreenAlloc(pGlamo->pScreen, pGlamo->ring_len + 4,
+		exaOffscreenAlloc(pGlamo->pScreen, pGlamo->ring_len,
 				  pGlamo->exa->pixmapOffsetAlign,
 				  TRUE, NULL, NULL);
 
@@ -479,6 +501,8 @@ GLAMOCMQCacheTeardown(GlamoPtr pGlamo)
 	xfree(pGlamo->cmd_queue_cache->address);
 	xfree(pGlamo->cmd_queue_cache);
 	pGlamo->cmd_queue_cache = NULL;
+    if(0)
+        GLAMODumpRegs(pGlamo, 0, 0);
 }
 
 static void
@@ -488,9 +512,8 @@ GLAMODumpRegs(GlamoPtr pGlamo,
 {
 	int i=0;
 	for (i=from; i <= to; i += 2) {
-			xf86DrvMsg(0, X_WARNING,"reg:%p, val:%#x\n",
+	    ErrorF("reg:%p, val:%#x\n",
 		pGlamo->reg_base+i,
 		*(VOL16*)(pGlamo->reg_base+i));
 	}
 }
-

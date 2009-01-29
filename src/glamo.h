@@ -81,7 +81,7 @@ MMIO_OUT16(__volatile__ void *base, const unsigned long offset,
 static __inline__ CARD16
 MMIO_IN16(__volatile__ void *base, const unsigned long offset)
 {
-    register unsigned short val;
+    unsigned short val;
     __asm__ __volatile__(
             "ldrh %0, [%1, +%2]"
             : "=r" (val)
@@ -152,7 +152,7 @@ typedef struct {
 	int		cmd_queue_cache_start;
 
 	/* What was GLAMOCardInfo */
-	char *reg_base;
+	volatile char *reg_base;
 	Bool is_3362;
 	CARD32 crtc_pitch;
 	CARD32 crtc2_pitch;
@@ -162,7 +162,7 @@ typedef struct {
 #define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
 
 static inline void
-MMIOSetBitMask(char *mmio, CARD32 reg, CARD16 mask, CARD16 val)
+MMIOSetBitMask(volatile char *mmio, CARD32 reg, CARD16 mask, CARD16 val)
 {
 	CARD16 tmp;
 
