@@ -63,12 +63,6 @@ enum { Glamo_ROTATE_NONE=0, Glamo_ROTATE_CW=270, Glamo_ROTATE_UD=180, Glamo_ROTA
 
 /* -------------------------------------------------------------------- */
 
-/*
- * This is intentionally screen-independent.  It indicates the binding
- * choice made in the first PreInit.
- */
-static int pix24bpp = 0;
-
 #define GLAMO_VERSION		1000
 #define GLAMO_NAME		"Glamo"
 #define GLAMO_DRIVER_NAME	"Glamo"
@@ -109,12 +103,6 @@ static const OptionInfoRec GlamoOptions[] = {
 };
 
 /* -------------------------------------------------------------------- */
-
-/*static const char *afbSymbols[] = {
-	"afbScreenInit",
-	"afbCreateDefColormap",
-	NULL
-};*/
 
 static const char *fbSymbols[] = {
 	"fbScreenInit",
@@ -315,8 +303,9 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 {
 	GlamoPtr fPtr;
 	int default_depth, fbbpp;
-	const char /**mod = NULL,*/ *s;
-	/*const char **syms = NULL;*/
+	const char *s;
+    rgb weight_defaults = { 0, 0, 0 };
+    Gamma gamma_defaults = {0.0, 0.0, 0.0};
 
 	if (flags & PROBE_DETECT) return FALSE;
 
@@ -340,45 +329,36 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	/* open device */
 	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"Glamo")))
 		return FALSE;
+
 	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
+
 	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
 				 Support24bppFb | Support32bppFb | SupportConvert32to24 | SupportConvert24to32))
 		return FALSE;
+
 	xf86PrintDepthBpp(pScrn);
 
-	/* Get the depth24 pixmap format */
-	if (pScrn->depth == 24 && pix24bpp == 0)
-		pix24bpp = xf86GetBppFromDepth(pScrn, 24);
-
 	/* color weight */
-	if (pScrn->depth > 8) {
-		rgb zeros = { 0, 0, 0 };
-		if (!xf86SetWeight(pScrn, zeros, zeros))
-			return FALSE;
-	}
+    if (!xf86SetWeight(pScrn, weight_defaults, weight_defaults))
+        return FALSE;
 
 	/* visual init */
 	if (!xf86SetDefaultVisual(pScrn, -1))
 		return FALSE;
 
 	/* We don't currently support DirectColor at > 8bpp */
-	if (pScrn->depth > 8 && pScrn->defaultVisual != TrueColor) {
+	if (pScrn->defaultVisual != TrueColor) {
 		xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "requested default visual"
 			   " (%s) is not supported at depth %d\n",
 			   xf86GetVisualName(pScrn->defaultVisual), pScrn->depth);
 		return FALSE;
 	}
 
-	{
-		Gamma zeros = {0.0, 0.0, 0.0};
-
-		if (!xf86SetGamma(pScrn,zeros)) {
-			return FALSE;
-		}
-	}
+    if (!xf86SetGamma(pScrn, gamma_defaults)) {
+        return FALSE;
+    }
 
 	pScrn->progClock = TRUE;
-	pScrn->rgbBits   = 8;
 	pScrn->chipset   = "Glamo";
 	pScrn->videoRam  = fbdevHWGetVidmem(pScrn);
 
@@ -509,23 +489,12 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 
 	/* mi layer */
 	miClearVisualTypes();
-	if (pScrn->bitsPerPixel > 8) {
-		if (!miSetVisualTypes(pScrn->depth, TrueColorMask, pScrn->rgbBits, TrueColor)) {
-			xf86DrvMsg(scrnIndex,X_ERROR,"visual type setup failed"
-				   " for %d bits per pixel [1]\n",
-				   pScrn->bitsPerPixel);
-			return FALSE;
-		}
-	} else {
-		if (!miSetVisualTypes(pScrn->depth,
-					  miGetDefaultVisualMask(pScrn->depth),
-					  pScrn->rgbBits, pScrn->defaultVisual)) {
-			xf86DrvMsg(scrnIndex,X_ERROR,"visual type setup failed"
-				   " for %d bits per pixel [2]\n",
-				   pScrn->bitsPerPixel);
-			return FALSE;
-		}
-	}
+    if (!miSetVisualTypes(pScrn->depth, TrueColorMask, pScrn->rgbBits, TrueColor)) {
+        xf86DrvMsg(scrnIndex,X_ERROR,"visual type setup failed"
+               " for %d bits per pixel [1]\n",
+               pScrn->bitsPerPixel);
+        return FALSE;
+    }
 	if (!miSetPixmapDepths()) {
 	  xf86DrvMsg(scrnIndex,X_ERROR,"pixmap depth setup failed\n");
 	  return FALSE;
@@ -565,20 +534,18 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	if (!ret)
 		return FALSE;
 
-	if (pScrn->bitsPerPixel > 8) {
-		/* Fixup RGB ordering */
-		visual = pScreen->visuals + pScreen->numVisuals;
-		while (--visual >= pScreen->visuals) {
-			if ((visual->class | DynamicClass) == DirectColor) {
-				visual->offsetRed   = pScrn->offset.red;
-				visual->offsetGreen = pScrn->offset.green;
-				visual->offsetBlue  = pScrn->offset.blue;
-				visual->redMask     = pScrn->mask.red;
-				visual->greenMask   = pScrn->mask.green;
-				visual->blueMask    = pScrn->mask.blue;
-			}
-		}
-	}
+    /* Fixup RGB ordering */
+    visual = pScreen->visuals + pScreen->numVisuals;
+    while (--visual >= pScreen->visuals) {
+        if ((visual->class | DynamicClass) == DirectColor) {
+            visual->offsetRed   = pScrn->offset.red;
+            visual->offsetGreen = pScrn->offset.green;
+            visual->offsetBlue  = pScrn->offset.blue;
+            visual->redMask     = pScrn->mask.red;
+            visual->greenMask   = pScrn->mask.green;
+            visual->blueMask    = pScrn->mask.blue;
+        }
+    }
 
 	/* must be after RGB ordering fixed */
 	if (init_picture && !fbPictureInit(pScreen, NULL, 0))
@@ -589,9 +556,6 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	  xf86DrvMsg(scrnIndex, X_INFO, "using driver rotation; disabling "
 							"XRandR\n");
 	  xf86DisableRandR();
-	  if (pScrn->bitsPerPixel == 24)
-		xf86DrvMsg(scrnIndex, X_WARNING, "rotation might be broken at 24 "
-                                             "bits per pixel\n");
 	}
 
 	/* map in the registers */
