@@ -19,7 +19,6 @@
 #include "colormapst.h"
 #include "xf86cmap.h"
 #include "shadow.h"
-#include "dgaproc.h"
 
 /* for visuals */
 #include "fb.h"
@@ -55,7 +54,6 @@ static Bool	GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen);
 /*static void *	GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
 				  CARD32 *size, void *closure);*/
 static void	GlamoPointerMoved(int index, int x, int y);
-static Bool	GlamoDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen);
 static Bool	GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
 				pointer ptr);
 
@@ -587,10 +585,7 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
 
-	if (!fPtr->rotate)
-	  GlamoDGAInit(pScrn, pScreen);
-	else {
-	  xf86DrvMsg(scrnIndex, X_INFO, "display rotated; disabling DGA\n");
+	if (fPtr->rotate) {
 	  xf86DrvMsg(scrnIndex, X_INFO, "using driver rotation; disabling "
 							"XRandR\n");
 	  xf86DisableRandR();
@@ -673,11 +668,6 @@ GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen)
 		xfree(fPtr->shadow);
 		fPtr->shadow = NULL;
 	}
-	if (fPtr->pDGAMode) {
-	  xfree(fPtr->pDGAMode);
-	  fPtr->pDGAMode = NULL;
-	  fPtr->nDGAMode = 0;
-	}
 	pScrn->vtSema = FALSE;
 
 	pScreen->CreateScreenResources = fPtr->CreateScreenResources;
@@ -745,149 +735,6 @@ GlamoPointerMoved(int index, int x, int y)
 
     /* Pass adjusted pointer coordinates to wrapped PointerMoved function. */
     (*fPtr->PointerMoved)(index, newX, newY);
-}
-
-/***********************************************************************
- * DGA stuff
- ***********************************************************************/
-static Bool GlamoDGAOpenFramebuffer(ScrnInfoPtr pScrn, char **DeviceName,
-				   unsigned char **ApertureBase,
-				   int *ApertureSize, int *ApertureOffset,
-				   int *flags);
-static Bool GlamoDGASetMode(ScrnInfoPtr pScrn, DGAModePtr pDGAMode);
-static void GlamoDGASetViewport(ScrnInfoPtr pScrn, int x, int y, int flags);
-
-static Bool
-GlamoDGAOpenFramebuffer(ScrnInfoPtr pScrn, char **DeviceName,
-			   unsigned char **ApertureBase, int *ApertureSize,
-			   int *ApertureOffset, int *flags)
-{
-    *DeviceName = NULL;		/* No special device */
-    *ApertureBase = (unsigned char *)(pScrn->memPhysBase);
-    *ApertureSize = pScrn->videoRam;
-    *ApertureOffset = pScrn->fbOffset;
-    *flags = 0;
-
-    return TRUE;
-}
-
-static Bool
-GlamoDGASetMode(ScrnInfoPtr pScrn, DGAModePtr pDGAMode)
-{
-    DisplayModePtr pMode;
-    int scrnIdx = pScrn->pScreen->myNum;
-    int frameX0, frameY0;
-
-    if (pDGAMode) {
-	pMode = pDGAMode->mode;
-	frameX0 = frameY0 = 0;
-    }
-    else {
-	if (!(pMode = pScrn->currentMode))
-		return TRUE;
-
-	frameX0 = pScrn->frameX0;
-	frameY0 = pScrn->frameY0;
-    }
-
-    if (!(*pScrn->SwitchMode)(scrnIdx, pMode, 0))
-	return FALSE;
-    (*pScrn->AdjustFrame)(scrnIdx, frameX0, frameY0, 0);
-
-    return TRUE;
-}
-
-static void
-GlamoDGASetViewport(ScrnInfoPtr pScrn, int x, int y, int flags)
-{
-    (*pScrn->AdjustFrame)(pScrn->pScreen->myNum, x, y, flags);
-}
-
-static int
-GlamoDGAGetViewport(ScrnInfoPtr pScrn)
-{
-    return (0);
-}
-
-static DGAFunctionRec GlamoDGAFunctions =
-{
-    GlamoDGAOpenFramebuffer,
-    NULL,       /* CloseFramebuffer */
-    GlamoDGASetMode,
-    GlamoDGASetViewport,
-    GlamoDGAGetViewport,
-    NULL,       /* Sync */
-    NULL,       /* FillRect */
-    NULL,       /* BlitRect */
-    NULL,       /* BlitTransRect */
-};
-
-static void
-GlamoDGAAddModes(ScrnInfoPtr pScrn)
-{
-    GlamoPtr fPtr = GlamoPTR(pScrn);
-    DisplayModePtr pMode = pScrn->modes;
-    DGAModePtr pDGAMode;
-
-    do {
-	pDGAMode = xrealloc(fPtr->pDGAMode,
-				(fPtr->nDGAMode + 1) * sizeof(DGAModeRec));
-	if (!pDGAMode)
-		break;
-
-	fPtr->pDGAMode = pDGAMode;
-	pDGAMode += fPtr->nDGAMode;
-	(void)memset(pDGAMode, 0, sizeof(DGAModeRec));
-
-	++fPtr->nDGAMode;
-	pDGAMode->mode = pMode;
-	pDGAMode->flags = DGA_CONCURRENT_ACCESS | DGA_PIXMAP_AVAILABLE;
-	pDGAMode->byteOrder = pScrn->imageByteOrder;
-	pDGAMode->depth = pScrn->depth;
-	pDGAMode->bitsPerPixel = pScrn->bitsPerPixel;
-	pDGAMode->red_mask = pScrn->mask.red;
-	pDGAMode->green_mask = pScrn->mask.green;
-	pDGAMode->blue_mask = pScrn->mask.blue;
-	pDGAMode->visualClass = pScrn->bitsPerPixel > 8 ?
-		TrueColor : PseudoColor;
-	pDGAMode->xViewportStep = 1;
-	pDGAMode->yViewportStep = 1;
-	pDGAMode->viewportWidth = pMode->HDisplay;
-	pDGAMode->viewportHeight = pMode->VDisplay;
-
-	if (fPtr->lineLength)
-	  pDGAMode->bytesPerScanline = fPtr->lineLength;
-	else
-	  pDGAMode->bytesPerScanline = fPtr->lineLength = fbdevHWGetLineLength(pScrn);
-
-	pDGAMode->imageWidth = pMode->HDisplay;
-	pDGAMode->imageHeight =  pMode->VDisplay;
-	pDGAMode->pixmapWidth = pDGAMode->imageWidth;
-	pDGAMode->pixmapHeight = pDGAMode->imageHeight;
-	pDGAMode->maxViewportX = pScrn->virtualX -
-					pDGAMode->viewportWidth;
-	pDGAMode->maxViewportY = pScrn->virtualY -
-					pDGAMode->viewportHeight;
-
-	pDGAMode->address = fPtr->fbstart;
-
-	pMode = pMode->next;
-    } while (pMode != pScrn->modes);
-}
-
-static Bool
-GlamoDGAInit(ScrnInfoPtr pScrn, ScreenPtr pScreen)
-{
-    GlamoPtr fPtr = GlamoPTR(pScrn);
-
-    if (pScrn->depth < 8)
-	return FALSE;
-
-    if (!fPtr->nDGAMode)
-	GlamoDGAAddModes(pScrn);
-
-    return (DGAInit(pScreen, &GlamoDGAFunctions,
-		fPtr->pDGAMode, fPtr->nDGAMode));
 }
 
 static Bool
