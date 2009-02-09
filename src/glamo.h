@@ -139,8 +139,6 @@ typedef struct {
 	ExaOffscreenArea *exa_cmd_queue;
 
 	CARD16		*ring_addr;	/* Beginning of ring buffer. */
-	int		ring_write;	/* Index of write ptr in ring. */
-	int		ring_read;	/* Index of read ptr in ring. */
 	int		ring_len;
 
 	/*

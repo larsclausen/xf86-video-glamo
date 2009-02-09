@@ -316,7 +316,8 @@ GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 	size_t count, ring_count;
     size_t rest_size;
     size_t ring_read;
-    size_t old_ring_write = pGlamo->ring_write;
+    size_t new_ring_write;
+    size_t ring_write;
 
     if (!buf->used)
         return;
@@ -325,50 +326,51 @@ GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 	count = buf->used;
 	ring_count = pGlamo->ring_len;
 
-
-    pGlamo->ring_write = (((pGlamo->ring_write + count) & CQ_MASK) + 1) & ~1;
+    ring_write = MMIO_IN16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRL);
+    ring_write |= MMIO_IN16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRH) << 16;
+    new_ring_write = (((ring_write + count) & CQ_MASK) + 1) & ~1;
 
     /* Wait until there is enough space to queue the cmd buffer */
-    if (pGlamo->ring_write > old_ring_write) {
+    if (new_ring_write > ring_write) {
         do {
 	        ring_read = MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRL) & CQ_MASKL;
         	ring_read |= ((MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRH) & CQ_MASKH) << 16);
-        } while(ring_read > old_ring_write && ring_read < pGlamo->ring_write);
+        } while(ring_read > ring_write && ring_read < new_ring_write);
     } else {
         do {
 	        ring_read = MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRL) & CQ_MASKL;
         	ring_read |= ((MMIO_IN16(mmio, GLAMO_REG_CMDQ_READ_ADDRH) & CQ_MASKH) << 16);
-        } while(ring_read > old_ring_write || ring_read < pGlamo->ring_write);
+        } while(ring_read > ring_write || ring_read < new_ring_write);
     }
 
     /* Wrap around */
-    if (old_ring_write >= pGlamo->ring_write) {
-        rest_size = (ring_count - old_ring_write);
-        memcpy((char*)(pGlamo->ring_addr) + old_ring_write, addr, rest_size);
+    if (ring_write >= new_ring_write) {
+        rest_size = (ring_count - ring_write);
+        memcpy((char*)(pGlamo->ring_addr) + ring_write, addr, rest_size);
         memcpy((char*)(pGlamo->ring_addr), addr+rest_size, count - rest_size);
 
         /* ring_write being 0 will result in a deadlock because the cmdq read
          * will never stop. To avoid such an behaviour insert an empty
          * instruction. */
-        if(pGlamo->ring_write == 0) {
+        if(new_ring_write == 0) {
             memset((char*)(pGlamo->ring_addr), 0, 4);
-            pGlamo->ring_write = 4;
+            new_ring_write = 4;
         }
 
         /* Before changing write read has to stop */
         GLAMOEngineWaitReal(pGlamo, GLAMO_ENGINE_CMDQ, FALSE);
 
         /* The write position has to change to trigger a read */
-        if(old_ring_write == pGlamo->ring_write) {
-            memset((char*)(pGlamo->ring_addr + pGlamo->ring_write), 0, 4);
-            pGlamo->ring_write += 4;
+        if(ring_write == new_ring_write) {
+            memset((char*)(pGlamo->ring_addr + new_ring_write), 0, 4);
+            new_ring_write += 4;
 /*            MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRH,
                        ((pGlamo->ring_write-4) >> 16) & CQ_MASKH);
             MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRL,
                        (pGlamo->ring_write-4) & CQ_MASKL);*/
         }
     } else {
-        memcpy((char*)(pGlamo->ring_addr) + old_ring_write, addr, count);
+        memcpy((char*)(pGlamo->ring_addr) + ring_write, addr, count);
         GLAMOEngineWaitReal(pGlamo, GLAMO_ENGINE_CMDQ, FALSE);
     }
     MMIOSetBitMask(mmio, GLAMO_REG_CLOCK_2D,
@@ -376,15 +378,14 @@ GLAMODispatchCMDQCache(GlamoPtr pGlamo)
 					0);
 
 	MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRH,
-			   (pGlamo->ring_write >> 16) & CQ_MASKH);
+			   (new_ring_write >> 16) & CQ_MASKH);
 	MMIO_OUT16(mmio, GLAMO_REG_CMDQ_WRITE_ADDRL,
-			   pGlamo->ring_write & CQ_MASKL);
+			   new_ring_write & CQ_MASKL);
 
     MMIOSetBitMask(mmio, GLAMO_REG_CLOCK_2D,
                 GLAMO_CLOCK_2D_EN_M6CLK,
 					0xffff);
     buf->used = 0;
-
 
     GLAMOEngineWaitReal(pGlamo, GLAMO_ENGINE_ALL, FALSE);
 }
@@ -404,8 +405,6 @@ GLAMOCMDQResetCP(GlamoPtr pGlamo)
 
 	/* make the decoder happy? */
 	memset((char*)pGlamo->ring_addr, 0, pGlamo->ring_len);
-
-    pGlamo->ring_write = 0;
 
 	GLAMOEngineReset(pGlamo, GLAMO_ENGINE_CMDQ);
 
