@@ -42,22 +42,44 @@ static const char *display_state_switch_path = "/sys/bus/spi/devices/spi2.0/stat
 static const char *display_state_vga = "normal";
 static const char *display_state_qvga = "qvga-normal";
 
-static void GlamoOutputDPMS(xf86OutputPtr output, int mode) {}
-static xf86OutputStatus GlamoOutputDetect(xf86OutputPtr output);
-static Bool GlamoOutputModeFixup(xf86OutputPtr output, DisplayModePtr mode,
+static void
+GlamoOutputDPMS(xf86OutputPtr output, int mode) {}
+
+static xf86OutputStatus
+GlamoOutputDetect(xf86OutputPtr output);
+
+static Bool
+GlamoOutputModeFixup(xf86OutputPtr output, DisplayModePtr mode,
                      DisplayModePtr mode_adjusted);
-static void GlamoOutputPrepare(xf86OutputPtr output);
-static void GlamoOutputModeSet(xf86OutputPtr output, DisplayModePtr mode,
+
+static void
+GlamoOutputPrepare(xf86OutputPtr output);
+
+static void
+GlamoOutputModeSet(xf86OutputPtr output, DisplayModePtr mode,
                    DisplayModePtr adjusted_mode);
-static int GlamoOutputModeValid(xf86OutputPtr output, DisplayModePtr mode);
-static Bool GlamoOutputModeFixup(xf86OutputPtr output, DisplayModePtr mode,
-                  DisplayModePtr mode_adjusted);
-static void GlamoOutputPrepare(xf86OutputPtr output);
+
+static int
+GlamoOutputModeValid(xf86OutputPtr output, DisplayModePtr mode);
+
+static Bool
+GlamoOutputModeFixup(xf86OutputPtr output, DisplayModePtr mode,
+                     DisplayModePtr mode_adjusted);
+
+static void
+GlamoOutputPrepare(xf86OutputPtr output);
+
 static void GlamoOutputModeSet(xf86OutputPtr output, DisplayModePtr mode,
                   DisplayModePtr adjusted_mode);
-static void GlamoOutputCommit(xf86OutputPtr output);
-static void GlamoOutputDestroy(xf86OutputPtr output);
-static DisplayModePtr GlamoOutputGetModes(xf86OutputPtr output);
+
+static void
+GlamoOutputCommit(xf86OutputPtr output);
+
+static void
+GlamoOutputDestroy(xf86OutputPtr output);
+
+static DisplayModePtr
+GlamoOutputGetModes(xf86OutputPtr output);
 
 static const xf86OutputFuncsRec glamo_output_funcs = {
     .create_resources = NULL,

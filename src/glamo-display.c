@@ -43,10 +43,15 @@
 #include "glamo.h"
 #include "glamo-regs.h"
 
-static void GlamoCrtcDPMS(xf86CrtcPtr crtc, int mode);
-static void GlamoCrtcGammaSet(xf86CrtcPtr crtc,  CARD16 *red, CARD16 *green,
-				  CARD16 *blue, int size);
-static void GlamoCrtcDestroy(xf86CrtcPtr crtc);
+static void
+GlamoCrtcDPMS(xf86CrtcPtr crtc, int mode);
+
+static void
+GlamoCrtcGammaSet(xf86CrtcPtr crtc,  CARD16 *red, CARD16 *green, CARD16 *blue,
+                  int size);
+
+static void
+GlamoCrtcDestroy(xf86CrtcPtr crtc);
 
 static Bool
 GlamoSetModeMajor(xf86CrtcPtr crtc, DisplayModePtr mode,

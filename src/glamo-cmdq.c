@@ -1,5 +1,6 @@
 /*
  * Copyright  2007 OpenMoko, Inc.
+ * Copyright © 2009 Lars-Peter Clausen <lars@metafoo.de>
  *
  * This driver is based on Xati,
  * Copyright  2004 Eric Anholt
@@ -32,8 +33,11 @@
 #include "glamo-cmdq.h"
 #include "glamo-draw.h"
 
-static void GLAMOCMDQResetCP(GlamoPtr pGlamo);
-static void GLAMODumpRegs(GlamoPtr pGlamo, CARD16 from, CARD16 to);
+static void
+GLAMOCMDQResetCP(GlamoPtr pGlamo);
+
+static void
+GLAMODumpRegs(GlamoPtr pGlamo, CARD16 from, CARD16 to);
 
 #define CQ_LEN 255
 #define CQ_MASK ((CQ_LEN + 1) * 1024 - 1)
