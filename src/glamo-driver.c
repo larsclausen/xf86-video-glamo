@@ -108,7 +108,8 @@ static SymTabRec GlamoChipsets[] = {
 /* Supported options */
 typedef enum {
 	OPTION_SHADOW_FB,
-	OPTION_DEBUG
+    OPTION_DEVICE,
+	OPTION_DEBUG,
 } GlamoOpts;
 
 static const OptionInfoRec GlamoOptions[] = {
@@ -289,7 +290,7 @@ GlamoProbe(DriverPtr drv, int flags)
 	xf86LoaderReqSymLists(fbdevHWSymbols, NULL);
 
 	for (i = 0; i < numDevSections; i++) {
-		dev = xf86FindOptionValue(devSections[i]->options, "Glamo");
+		dev = xf86FindOptionValue(devSections[i]->options, "Device");
 		if (fbdevHWProbe(NULL, dev, NULL)) {
 			int entity;
 			pScrn = NULL;
@@ -352,7 +353,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
     /* XXX Is this right?  Can probably remove RAC_FB */
     pScrn->racIoFlags = RAC_FB | RAC_COLORMAP | RAC_CURSOR | RAC_VIEWPORT;
 
-    fb_device = xf86FindOptionValue(pGlamo->pEnt->device->options, "Glamo");
+    fb_device = xf86FindOptionValue(pGlamo->pEnt->device->options, "Device");
 
     /* open device */
     if (!fbdevHWInit(pScrn, NULL, fb_device))
