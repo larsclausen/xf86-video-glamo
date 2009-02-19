@@ -40,6 +40,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 
 static Bool debug = 0;
 
@@ -74,7 +75,7 @@ static Bool
 GlamoCrtcResize(ScrnInfoPtr scrn, int width, int height);
 
 static Bool
-GlamoInitFramebufferDevice(GlamoPtr pGlamo, const char *fb_device);
+GlamoInitFramebufferDevice(ScrnInfoPtr scrn, const char *fb_device);
 /* -------------------------------------------------------------------- */
 
 static const xf86CrtcConfigFuncsRec glamo_crtc_config_funcs = {
@@ -361,7 +362,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 
 	/* FIXME: Replace all fbdev functionality with our own code, so we only have
 	 * to open the fb devic only once. */
-    if (!GlamoInitFramebufferDevice(pGlamo, fb_device))
+    if (!GlamoInitFramebufferDevice(pScrn, fb_device))
         return FALSE;
 
     default_depth = fbdevHWGetDepth(pScrn, &fbbpp);
@@ -593,11 +594,15 @@ GlamoCrtcResize(ScrnInfoPtr pScrn, int width, int height) {
 
 
 static Bool
-GlamoInitFramebufferDevice(GlamoPtr pGlamo, const char *fb_device) {
+GlamoInitFramebufferDevice(ScrnInfoPtr pScrn, const char *fb_device) {
+    GlamoPtr pGlamo = GlamoPTR(pScrn);
+
     if (fb_device) {
         pGlamo->fb_fd = open(fb_device, O_RDWR, 0);
         if (pGlamo->fb_fd == -1) {
-            ErrorF("Failed to open framebuffer device\n");
+            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                       "Failed to open framebuffer device \"%s\": %s\n",
+                       fb_device, strerror(errno));
             goto fail2;
         }
     } else {
@@ -605,13 +610,18 @@ GlamoInitFramebufferDevice(GlamoPtr pGlamo, const char *fb_device) {
         if (fb_device != NULL) {
             pGlamo->fb_fd = open(fb_device, O_RDWR, 0);
         if (pGlamo->fb_fd != -1)
-            fb_device = NULL;
+            xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
+                       "Failed to open framebuffer device \"%s\": %s\n",
+                       fb_device, strerror(errno));
+             fb_device = NULL;
         }
         if (fb_device == NULL) {
             fb_device = "/dev/fb0";
             pGlamo->fb_fd = open(fb_device, O_RDWR, 0);
             if (pGlamo->fb_fd == -1) {
-                ErrorF("Failed to open framebuffer device\n");
+                xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                          "Failed to open framebuffer device \"%s\": %s",
+                           fb_device, strerror(errno));
                 goto fail2;
             }
         }
@@ -619,12 +629,16 @@ GlamoInitFramebufferDevice(GlamoPtr pGlamo, const char *fb_device) {
 
     /* retrive current setting */
     if (ioctl(pGlamo->fb_fd, FBIOGET_FSCREENINFO, (void*)(&pGlamo->fb_fix)) == -1) {
-        ErrorF("FBIOGET_FSCREENINFO\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                   "Framebuffer ioctl FBIOGET_FSCREENINFO failed: %s",
+                   strerror(errno));
         goto fail1;
     }
 
     if (ioctl(pGlamo->fb_fd, FBIOGET_VSCREENINFO, (void*)(&pGlamo->fb_var)) == -1) {
-        ErrorF("FBIOGET_VSCREENINFO\n");
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
+                   "Framebuffer ioctl FBIOGET_FSCREENINFO failed: %s",
+                   strerror(errno));
         goto fail1;
     }
     return TRUE;
