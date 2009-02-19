@@ -40,7 +40,7 @@ static void GLAMODumpRegs(GlamoPtr pGlamo, CARD16 from, CARD16 to);
 #define CQ_MASKL (CQ_MASK & 0xffff)
 #define CQ_MASKH (CQ_MASK >> 16)
 
-#ifndef NDEBUG
+#if 0
 static void
 GLAMODebugFifo(GlamoPtr pGlamo)
 {

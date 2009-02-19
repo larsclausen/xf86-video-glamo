@@ -30,7 +30,16 @@
 
 #include "xf86xv.h"
 
+#include "xf86i2c.h"
+#include "xf86Modes.h"
+#include "xf86Crtc.h"
+#include "xf86RandR12.h"
+
 #include "glamo.h"
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
 
 static Bool debug = 0;
 
@@ -51,17 +60,15 @@ static Bool	GlamoPreInit(ScrnInfoPtr pScrn, int flags);
 static Bool	GlamoScreenInit(int Index, ScreenPtr pScreen, int argc,
 				char **argv);
 static Bool	GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen);
-/*static void *	GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
-				  CARD32 *size, void *closure);*/
-static void	GlamoPointerMoved(int index, int x, int y);
-static Bool	GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op,
-				pointer ptr);
-
-
-enum { Glamo_ROTATE_NONE=0, Glamo_ROTATE_CW=270, Glamo_ROTATE_UD=180, Glamo_ROTATE_CCW=90 };
-
-
+static Bool
+GlamoCrtcResize(ScrnInfoPtr scrn, int width, int height);
+static Bool
+GlamoInitFramebufferDevice(GlamoPtr pGlamo, const char *fb_device);
 /* -------------------------------------------------------------------- */
+
+static const xf86CrtcConfigFuncsRec glamo_crtc_config_funcs = {
+    .resize = GlamoCrtcResize
+};
 
 #define GLAMO_VERSION		1000
 #define GLAMO_NAME		"Glamo"
@@ -78,8 +85,7 @@ _X_EXPORT DriverRec Glamo = {
 	GlamoAvailableOptions,
 	NULL,
 	0,
-	GlamoDriverFunc
-
+	NULL
 };
 
 /* Supported "chipsets" */
@@ -91,13 +97,11 @@ static SymTabRec GlamoChipsets[] = {
 /* Supported options */
 typedef enum {
 	OPTION_SHADOW_FB,
-	OPTION_ROTATE,
 	OPTION_DEBUG
 } GlamoOpts;
 
 static const OptionInfoRec GlamoOptions[] = {
 	{ OPTION_SHADOW_FB,	"ShadowFB",	OPTV_BOOLEAN,	{0},	FALSE },
-	{ OPTION_ROTATE,	"Rotate",	OPTV_STRING,	{0},	FALSE },
 	{ OPTION_DEBUG,		"debug",	OPTV_BOOLEAN,	{0},	FALSE },
 	{ -1,			NULL,		OPTV_NONE,	{0},	FALSE }
 };
@@ -124,8 +128,6 @@ static const char *shadowSymbols[] = {
 static const char *fbdevHWSymbols[] = {
 	"fbdevHWInit",
 	"fbdevHWProbe",
-	"fbdevHWSetVideoModes",
-	"fbdevHWUseBuildinMode",
 
 	"fbdevHWGetDepth",
 	"fbdevHWGetLineLength",
@@ -145,12 +147,10 @@ static const char *fbdevHWSymbols[] = {
 	"fbdevHWAdjustFrameWeak",
 	"fbdevHWEnterVTWeak",
 	"fbdevHWLeaveVTWeak",
-	"fbdevHWModeInit",
 	"fbdevHWRestore",
 	"fbdevHWSave",
 	"fbdevHWSaveScreen",
 	"fbdevHWSaveScreenWeak",
-	"fbdevHWSwitchModeWeak",
 	"fbdevHWValidModeWeak",
 
 	"fbdevHWDPMSSet",
@@ -194,7 +194,7 @@ GlamoSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 
 	if (!setupDone) {
 		setupDone = TRUE;
-		xf86AddDriver(&Glamo, module, HaveDriverFuncs);
+		xf86AddDriver(&Glamo, module, 0);
 		LoaderRefSymLists(fbSymbols,
 				  shadowSymbols, fbdevHWSymbols, exaSymbols, NULL);
 		return (pointer)1;
@@ -226,6 +226,20 @@ GlamoFreeRec(ScrnInfoPtr pScrn)
 }
 
 /* -------------------------------------------------------------------- */
+static Bool
+GlamoSwitchMode(int scrnIndex, DisplayModePtr mode, int flags) {
+    ScrnInfoPtr pScrn = xf86Screens[scrnIndex];
+    xf86CrtcConfigPtr config = XF86_CRTC_CONFIG_PTR (pScrn);
+    xf86OutputPtr output = config->output[config->compat_output];
+    Rotation rotation;
+
+    if (output && output->crtc)
+        rotation = output->crtc->rotation;
+    else
+        rotation = RR_Rotate_0;
+
+    return xf86SetSingleMode(pScrn, mode, rotation);
+}
 
 static const OptionInfoRec *
 GlamoAvailableOptions(int chipid, int busid)
@@ -282,7 +296,7 @@ GlamoProbe(DriverPtr drv, int flags)
 				pScrn->Probe         = GlamoProbe;
 				pScrn->PreInit       = GlamoPreInit;
 				pScrn->ScreenInit    = GlamoScreenInit;
-				pScrn->SwitchMode    = fbdevHWSwitchModeWeak();
+				pScrn->SwitchMode    = GlamoSwitchMode;
 				pScrn->AdjustFrame   = fbdevHWAdjustFrameWeak();
 				pScrn->EnterVT       = fbdevHWEnterVTWeak();
 				pScrn->LeaveVT       = fbdevHWLeaveVTWeak();
@@ -303,7 +317,7 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 {
 	GlamoPtr fPtr;
 	int default_depth, fbbpp;
-	const char *s;
+	/*const char *s;*/
     rgb weight_defaults = { 0, 0, 0 };
     Gamma gamma_defaults = {0.0, 0.0, 0.0};
 
@@ -330,10 +344,14 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	if (!fbdevHWInit(pScrn,NULL,xf86FindOptionValue(fPtr->pEnt->device->options,"Glamo")))
 		return FALSE;
 
+	/* FIXME: Replace all fbdev functionality with our own code, so we only have
+	 * to open the fb devic only once. */
+	if (!GlamoInitFramebufferDevice(fPtr, xf86FindOptionValue(fPtr->pEnt->device->options,"Glamo")))
+		return FALSE;
+
 	default_depth = fbdevHWGetDepth(pScrn,&fbbpp);
 
-	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp,
-				 Support24bppFb | Support32bppFb | SupportConvert32to24 | SupportConvert24to32))
+	if (!xf86SetDepthBpp(pScrn, default_depth, default_depth, fbbpp, 0))
 		return FALSE;
 
 	xf86PrintDepthBpp(pScrn);
@@ -358,6 +376,16 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
         return FALSE;
     }
 
+    xf86CrtcConfigInit(pScrn, &glamo_crtc_config_funcs);
+    xf86CrtcSetSizeRange(pScrn, 240, 320, 480, 640);
+    GlamoCrtcInit(pScrn);
+    GlamoOutputInit(pScrn);
+
+    if (!xf86InitialConfiguration(pScrn, TRUE)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_ERROR, "No valid modes.\n");
+        return FALSE;
+    }
+
 	pScrn->progClock = TRUE;
 	pScrn->chipset   = "Glamo";
 	pScrn->videoRam  = fbdevHWGetVidmem(pScrn);
@@ -377,61 +405,6 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 
 	debug = xf86ReturnOptValBool(fPtr->Options, OPTION_DEBUG, FALSE);
 
-	/* rotation */
-	fPtr->rotate = Glamo_ROTATE_NONE;
-	if ((s = xf86GetOptValString(fPtr->Options, OPTION_ROTATE)))
-	{
-	  if(!xf86NameCmp(s, "CW"))
-	  {
-		fPtr->shadowFB = TRUE;
-		fPtr->rotate = Glamo_ROTATE_CW;
-		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
-			   "rotating screen clockwise\n");
-	  }
-	  else if(!xf86NameCmp(s, "CCW"))
-	  {
-		fPtr->shadowFB = TRUE;
-		fPtr->rotate = Glamo_ROTATE_CCW;
-		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
-			   "rotating screen counter-clockwise\n");
-	  }
-	  else if(!xf86NameCmp(s, "UD"))
-	  {
-		fPtr->shadowFB = TRUE;
-		fPtr->rotate = Glamo_ROTATE_UD;
-		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
-			   "rotating screen upside-down\n");
-	  }
-	  else
-	  {
-		xf86DrvMsg(pScrn->scrnIndex, X_CONFIG,
-			   "\"%s\" is not a valid value for Option \"Rotate\"\n", s);
-		xf86DrvMsg(pScrn->scrnIndex, X_INFO,
-			   "valid options are \"CW\", \"CCW\" and \"UD\"\n");
-	  }
-	}
-
-	/* select video modes */
-
-	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "checking modes against framebuffer device...\n");
-	fbdevHWSetVideoModes(pScrn);
-
-	xf86DrvMsg(pScrn->scrnIndex, X_INFO, "checking modes against monitor...\n");
-	{
-		DisplayModePtr mode, first = mode = pScrn->modes;
-
-		if (mode != NULL) do {
-			mode->status = xf86CheckModeForMonitor(mode, pScrn->monitor);
-			mode = mode->next;
-		} while (mode != NULL && mode != first);
-
-		xf86PruneDriverModes(pScrn);
-	}
-
-	if (NULL == pScrn->modes)
-		fbdevHWUseBuildinMode(pScrn);
-	pScrn->currentMode = pScrn->modes;
-
 	/* First approximation, may be refined in ScreenInit */
 	pScrn->displayWidth = pScrn->virtualX;
 
@@ -450,13 +423,13 @@ GlamoPreInit(ScrnInfoPtr pScrn, int flags)
 	return TRUE;
 }
 
+
 static Bool
 GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 {
 	ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
 	GlamoPtr fPtr = GlamoPTR(pScrn);
 	VisualPtr visual;
-	int init_picture = 0;
     int ret, flags;
 
     TRACE_ENTER("GlamoScreenInit");
@@ -479,11 +452,6 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	fPtr->fboff = fbdevHWLinearOffset(pScrn);
 
 	fbdevHWSave(pScrn);
-
-	if (!fbdevHWModeInit(pScrn, pScrn->currentMode)) {
-		xf86DrvMsg(scrnIndex,X_ERROR,"mode initialization failed\n");
-		return FALSE;
-	}
 	fbdevHWSaveScreen(pScreen, SCREEN_SAVER_ON);
 	fbdevHWAdjustFrame(scrnIndex,0,0,0);
 
@@ -500,28 +468,8 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 	  return FALSE;
 	}
 
-	if(fPtr->rotate==Glamo_ROTATE_CW || fPtr->rotate==Glamo_ROTATE_CCW)
-	{
-	  int tmp = pScrn->virtualX;
-	  pScrn->virtualX = pScrn->displayWidth = pScrn->virtualY;
-	  pScrn->virtualY = tmp;
-	} else {
-		/* FIXME: this doesn't work for all cases, e.g. when each scanline
-			has a padding which is independent from the depth (controlfb) */
-		pScrn->displayWidth = fbdevHWGetLineLength(pScrn) /
+    pScrn->displayWidth = fbdevHWGetLineLength(pScrn) /
 					  (pScrn->bitsPerPixel / 8);
-
-		if (pScrn->displayWidth != pScrn->virtualX) {
-			xf86DrvMsg(scrnIndex, X_INFO,
-				   "Pitch updated to %d after ModeInit\n",
-				   pScrn->displayWidth);
-		}
-	}
-
-	if(fPtr->rotate && !fPtr->PointerMoved) {
-		fPtr->PointerMoved = pScrn->PointerMoved;
-		pScrn->PointerMoved = GlamoPointerMoved;
-	}
 
 	fPtr->fbstart = fPtr->fbmem + fPtr->fboff;
 
@@ -529,8 +477,6 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 					   pScrn->virtualY, pScrn->xDpi,
 					   pScrn->yDpi, pScrn->displayWidth,
 					   pScrn->bitsPerPixel);
-	init_picture = 1;
-
 	if (!ret)
 		return FALSE;
 
@@ -548,15 +494,9 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
     }
 
 	/* must be after RGB ordering fixed */
-	if (init_picture && !fbPictureInit(pScreen, NULL, 0))
+	if (!fbPictureInit(pScreen, NULL, 0))
 		xf86DrvMsg(pScrn->scrnIndex, X_WARNING,
 			   "Render extension initialisation failed\n");
-
-	if (fPtr->rotate) {
-	  xf86DrvMsg(scrnIndex, X_INFO, "using driver rotation; disabling "
-							"XRandR\n");
-	  xf86DisableRandR();
-	}
 
 	/* map in the registers */
 	fPtr->reg_base = xf86MapVidMem(pScreen->myNum, VIDMEM_MMIO, 0x8000000, 0x2400);
@@ -598,22 +538,19 @@ GlamoScreenInit(int scrnIndex, ScreenPtr pScreen, int argc, char **argv)
 				NULL, flags))
 		return FALSE;
 
-	xf86DPMSInit(pScreen, fbdevHWDPMSSetWeak(), 0);
 
-	pScreen->SaveScreen = fbdevHWSaveScreenWeak();
+    xf86CrtcScreenInit(pScreen);
+    xf86RandR12SetRotations(pScreen, RR_Rotate_0 | RR_Rotate_90 |
+                                     RR_Rotate_180 | RR_Rotate_270);
 
-	/* Wrap the current CloseScreen function */
+	xf86DPMSInit(pScreen, xf86DPMSSet, 0);
+
+	pScreen->SaveScreen = xf86SaveScreen;
+
+    xf86SetDesiredModes(pScrn);
+    /* Wrap the current CloseScreen function */
 	fPtr->CloseScreen = pScreen->CloseScreen;
 	pScreen->CloseScreen = GlamoCloseScreen;
-
-	{
-		XF86VideoAdaptorPtr *ptr;
-
-		int n = xf86XVListGenericAdaptors(pScrn,&ptr);
-		if (n) {
-		xf86XVScreenInit(pScreen,ptr,n);
-		}
-	}
 
 	TRACE_EXIT("GlamoScreenInit");
 
@@ -639,119 +576,57 @@ GlamoCloseScreen(int scrnIndex, ScreenPtr pScreen)
 	return (*pScreen->CloseScreen)(scrnIndex, pScreen);
 }
 
-
-
-/***********************************************************************
- * Shadow stuff
- ***********************************************************************/
-#if 0
-static void *
-GlamoWindowLinear(ScreenPtr pScreen, CARD32 row, CARD32 offset, int mode,
-		 CARD32 *size, void *closure)
-{
-    ScrnInfoPtr pScrn = xf86Screens[pScreen->myNum];
-    GlamoPtr fPtr = GlamoPTR(pScrn);
-
-    if (!pScrn->vtSema)
-      return NULL;
-
-    if (fPtr->lineLength)
-      *size = fPtr->lineLength;
-    else
-      *size = fPtr->lineLength = fbdevHWGetLineLength(pScrn);
-
-    return ((CARD8 *)fPtr->fbstart + row * fPtr->lineLength + offset);
-}
-#endif
-static void
-GlamoPointerMoved(int index, int x, int y)
-{
-    ScrnInfoPtr pScrn = xf86Screens[index];
-    GlamoPtr fPtr = GlamoPTR(pScrn);
-    int newX, newY;
-
-    switch (fPtr->rotate)
-    {
-    case Glamo_ROTATE_CW:
-	/* 90 degrees CW rotation. */
-	newX = pScrn->pScreen->height - y - 1;
-	newY = x;
-	break;
-
-    case Glamo_ROTATE_CCW:
-	/* 90 degrees CCW rotation. */
-	newX = y;
-	newY = pScrn->pScreen->width - x - 1;
-	break;
-
-    case Glamo_ROTATE_UD:
-	/* 180 degrees UD rotation. */
-	newX = pScrn->pScreen->width - x - 1;
-	newY = pScrn->pScreen->height - y - 1;
-	break;
-
-    default:
-	/* No rotation. */
-	newX = x;
-	newY = y;
-	break;
-    }
-
-    /* Pass adjusted pointer coordinates to wrapped PointerMoved function. */
-    (*fPtr->PointerMoved)(index, newX, newY);
-}
-
 static Bool
-GlamoRandRGetInfo(ScrnInfoPtr pScrn, Rotation *rotations)
-{
-	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "GlamoRandRGetInfo got here!\n");
-
-    *rotations = RR_Rotate_0 | RR_Rotate_90 | RR_Rotate_270;
+GlamoCrtcResize(ScrnInfoPtr pScrn, int width, int height) {
+    pScrn->virtualX = width;
+    pScrn->virtualY = height;
+    pScrn->displayWidth = width * (pScrn->bitsPerPixel / 8);
+    pScrn->pScreen->GetScreenPixmap(pScrn->pScreen)->devKind = pScrn->displayWidth;
 
     return TRUE;
 }
 
+
 static Bool
-GlamoRandRSetConfig(ScrnInfoPtr pScrn, xorgRRConfig *config)
-{
-	xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-			   "GlamoRandRSetConfig got here!\n");
+GlamoInitFramebufferDevice(GlamoPtr pGlamo, const char *fb_device) {
+	if(fb_device) {
+		pGlamo->fb_fd = open(fb_device, O_RDWR, 0);
+		if (pGlamo->fb_fd == -1) {
+			ErrorF("Failed to open framebuffer device\n");
+			goto fail2;
+		}
+	} else {
+		fb_device = getenv("FRAMEBUFFER");
+		if (fb_device != NULL) {
+			pGlamo->fb_fd = open(fb_device, O_RDWR, 0);
+			if (pGlamo->fb_fd != -1)
+				fb_device = NULL;
+		}
+		if (fb_device == NULL) {
+			fb_device = "/dev/fb0";
+			pGlamo->fb_fd = open(fb_device, O_RDWR, 0);
+			if (pGlamo->fb_fd == -1) {
+				ErrorF("Failed to open framebuffer device\n");
+				goto fail2;
+			}
+		}
+	}
 
-    switch(config->rotation) {
-        case RR_Rotate_0:
-            break;
-
-        case RR_Rotate_90:
-            break;
-
-        case RR_Rotate_270:
-            break;
-
-        default:
-            xf86DrvMsg(pScrn->scrnIndex, X_ERROR,
-                    "Unexpected rotation in GlamoRandRSetConfig!\n");
-            return FALSE;
+    /* retrive current setting */
+    if (ioctl(pGlamo->fb_fd, FBIOGET_FSCREENINFO, (void*)(&pGlamo->fb_fix)) == -1) {
+        ErrorF("FBIOGET_FSCREENINFO\n");
+        goto fail1;
     }
 
+    if (ioctl(pGlamo->fb_fd, FBIOGET_VSCREENINFO, (void*)(&pGlamo->fb_var)) == -1) {
+        ErrorF("FBIOGET_VSCREENINFO\n");
+        goto fail1;
+    }
     return TRUE;
+fail1:
+    close(pGlamo->fb_fd);
+    pGlamo->fb_fd = -1;
+fail2:
+    return FALSE;
 }
 
-static Bool
-GlamoDriverFunc(ScrnInfoPtr pScrn, xorgDriverFuncOp op, pointer ptr)
-{
-    xorgHWFlags *flag;
-
-    switch (op) {
-	case GET_REQUIRED_HW_INTERFACES:
-		flag = (CARD32*)ptr;
-		(*flag) = 0;
-		return TRUE;
-	case RR_GET_INFO:
-		return GlamoRandRGetInfo(pScrn, (Rotation*)ptr);
-	case RR_SET_CONFIG:
-        return GlamoRandRSetConfig(pScrn, (xorgRRConfig*)ptr);
-	default:
-		return FALSE;
-    }
-}

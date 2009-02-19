@@ -35,6 +35,7 @@
 
 #include "xf86.h"
 #include "exa.h"
+#include <linux/fb.h>
 
 #define GLAMO_REG_BASE(c)		((c)->attr.address[0])
 #define GLAMO_REG_SIZE(c)		(0x2400)
@@ -108,11 +109,6 @@ typedef struct _MemBuf {
 } MemBuf;
 
 typedef struct {
-	unsigned char*			fbstart;
-	unsigned char*			fbmem;
-	int						fboff;
-	int						lineLength;
-	int						rotate;
 	Bool					shadowFB;
 	void					*shadow;
 	CloseScreenProcPtr		CloseScreen;
@@ -155,6 +151,14 @@ typedef struct {
 	CARD32 crtc_pitch;
 	CARD32 crtc2_pitch;
 
+    /* linux framebuffer */
+    int fb_fd;
+    struct fb_var_screeninfo fb_var;
+    struct fb_fix_screeninfo fb_fix;
+    unsigned char *fbstart;
+	unsigned char *fbmem;
+	int fboff;
+	int lineLength;
 } GlamoRec, *GlamoPtr;
 
 #define GlamoPTR(p) ((GlamoPtr)((p)->driverPrivate))
@@ -194,5 +198,13 @@ GLAMORecolorCursor(ScreenPtr pScreen, int ndef, xColorItem *pdef);
 
 Bool
 GLAMODrawExaInit(ScreenPtr pScreen, ScrnInfoPtr pScrn);
+
+/* glamo-display.h */
+Bool
+GlamoCrtcInit(ScrnInfoPtr pScrn);
+
+/* glamo-output.h */
+void
+GlamoOutputInit(ScrnInfoPtr pScrn);
 
 #endif /* _GLAMO_H_ */
